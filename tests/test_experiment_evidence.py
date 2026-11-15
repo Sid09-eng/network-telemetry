@@ -3,14 +3,79 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from evaluate.experiment import iperf_receiver_samples, write_trial_evidence
+from evaluate.experiment import iperf_receiver_samples, run_paired_trial, write_trial_evidence
 
 
 class ExperimentEvidenceTests(unittest.TestCase):
+    def test_paired_trial_rejects_an_unsafe_run_id_before_running_commands(self) -> None:
+        def runner(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            self.fail("unsafe run IDs must be rejected before any command is executed")
+
+        with TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "run_id"):
+                run_paired_trial(
+                    run_id="trial; unexpected-command",
+                    remediated=False,
+                    runs_root=Path(directory),
+                    runner=runner,
+                )
+
+    def test_paired_trial_rejects_a_dry_run_webhook_as_remediation(self) -> None:
+        receiver = {"start": {"timestamp": {"timesecs": 1}}, "intervals": []}
+
+        def runner(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            stdout = ""
+            if command[0] == "curl":
+                stdout = '{"mode":"dry-run","decisions":[{"status":"dry-run"}]}'
+            elif "cat" in command:
+                stdout = json.dumps(receiver)
+            return subprocess.CompletedProcess(command, 0, stdout=stdout, stderr="")
+
+        with TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "live applied"):
+                run_paired_trial(
+                    run_id="task10-dry-run",
+                    remediated=True,
+                    runs_root=Path(directory),
+                    duration_seconds=8,
+                    baseline_seconds=1,
+                    impairment_seconds=6,
+                    runner=runner,
+                    sleeper=lambda _seconds: None,
+                )
+
+    def test_paired_trial_records_a_confirmed_live_action(self) -> None:
+        receiver = {"start": {"timestamp": {"timesecs": 1}}, "intervals": []}
+
+        def runner(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            stdout = ""
+            if command[0] == "curl":
+                stdout = '{"mode":"live","decisions":[{"status":"applied"}]}'
+            elif "cat" in command:
+                stdout = json.dumps(receiver)
+            return subprocess.CompletedProcess(command, 0, stdout=stdout, stderr="")
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run_paired_trial(
+                run_id="task10-live",
+                remediated=True,
+                runs_root=root,
+                duration_seconds=8,
+                baseline_seconds=1,
+                impairment_seconds=6,
+                runner=runner,
+                sleeper=lambda _seconds: None,
+            )
+            events = json.loads((root / "task10-live" / "events.json").read_text())
+
+        self.assertEqual(events["remediation"], {"mode": "live", "status": "applied"})
+
     def test_receiver_intervals_become_timestamped_throughput_samples(self) -> None:
         raw = {
             "start": {"timestamp": {"timesecs": 100}},

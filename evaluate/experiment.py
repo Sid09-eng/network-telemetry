@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -13,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from .mttr import ThroughputSample
+
+RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 def run_paired_trial(
@@ -32,8 +35,17 @@ def run_paired_trial(
     The caller must start the explicit live remediation override for a remediated
     trial. Cleanup always removes netem and both temporary OSPF costs.
     """
+    if not RUN_ID_PATTERN.fullmatch(run_id):
+        raise ValueError("run_id must contain only letters, numbers, dots, underscores, or hyphens")
     if duration_seconds <= baseline_seconds + impairment_seconds:
         raise ValueError("duration must include a post-recovery observation window")
+    if baseline_seconds < 0 or impairment_seconds <= 0:
+        raise ValueError(
+            "baseline_seconds must be non-negative and impairment_seconds must be positive"
+        )
+    if remediated and impairment_seconds < 5:
+        raise ValueError("remediated trials require at least five impairment seconds")
+
     def command(args: list[str], *, output: bool = False) -> str:
         completed = runner(args, check=True, capture_output=output, text=output)
         return completed.stdout if output else ""
@@ -51,8 +63,30 @@ def run_paired_trial(
         if remediated:
             sleeper(5)
             events["action_start"] = clock()
-            # Use curl inside the trusted local devcontainer; payload is fixed/allow-listed.
-            command(["curl", "--fail", "--silent", "-X", "POST", "http://127.0.0.1:8000/alerts", "-H", "Content-Type: application/json", "--data", '{"version":"4","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"NetPulseLinkAnomaly","link":"r1-r2"}}]}'])  # noqa: E501
+            response = command(
+                [
+                    "curl",
+                    "--fail",
+                    "--silent",
+                    "-X",
+                    "POST",
+                    "http://127.0.0.1:8000/alerts",
+                    "-H",
+                    "Content-Type: application/json",
+                    "--data",
+                    '{"version":"4","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"NetPulseLinkAnomaly","link":"r1-r2"}}]}',
+                ],
+                output=True,
+            )
+            try:
+                decision = json.loads(response)
+                decisions = decision["decisions"]
+                applied = any(item.get("status") == "applied" for item in decisions)
+            except (AttributeError, KeyError, TypeError, json.JSONDecodeError) as error:
+                raise ValueError("remediation endpoint returned an invalid decision") from error
+            if decision.get("mode") != "live" or not applied:
+                raise ValueError("remediation endpoint did not confirm a live applied action")
+            events["remediation"] = {"mode": "live", "status": "applied"}
             events["action_end"] = clock()
             sleeper(impairment_seconds - 5)
         else:

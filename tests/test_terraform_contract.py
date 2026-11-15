@@ -19,11 +19,16 @@ class TerraformContractTests(unittest.TestCase):
 
     def test_network_access_is_scoped_to_the_named_admin_cidr(self) -> None:
         configuration = (TERRAFORM / "main.tf").read_text(encoding="utf-8")
+        outputs = (TERRAFORM / "outputs.tf").read_text(encoding="utf-8")
 
         self.assertIn("auto_create_subnetworks = false", configuration)
         self.assertIn("source_ranges = [var.admin_cidr]", configuration)
         self.assertIn('target_tags   = ["netpulse"]', configuration)
         self.assertNotIn("0.0.0.0/0", configuration)
+        self.assertNotIn('resource "google_compute_firewall" "ui"', configuration)
+        self.assertNotIn("service_account {", configuration)
+        self.assertIn('output "grafana_tunnel_command"', outputs)
+        self.assertNotIn('output "grafana_url"', outputs)
 
     def test_startup_and_operator_docs_cover_safe_deployment_and_teardown(self) -> None:
         startup = (TERRAFORM / "startup.sh").read_text(encoding="utf-8")
@@ -31,6 +36,8 @@ class TerraformContractTests(unittest.TestCase):
 
         self.assertIn("systemctl enable --now docker", startup)
         self.assertNotIn("GOOGLE_APPLICATION_CREDENTIALS", startup)
+        self.assertIn("CONTAINERLAB_VERSION", startup)
+        self.assertIn("containerlab_${CONTAINERLAB_VERSION}", startup)
         self.assertIn("terraform destroy", deployment)
         self.assertIn("budget", deployment.lower())
 

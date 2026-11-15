@@ -30,20 +30,6 @@ resource "google_compute_firewall" "ssh" {
   }
 }
 
-resource "google_compute_firewall" "ui" {
-  name          = "netpulse-ui"
-  description   = "Permit NetPulse local-only endpoints only from the approved operator CIDR."
-  network       = google_compute_network.netpulse.name
-  direction     = "INGRESS"
-  source_ranges = [var.admin_cidr]
-  target_tags   = ["netpulse"]
-
-  allow {
-    protocol = "tcp"
-    ports    = ["3000", "8000", "8001", "9090", "9093"]
-  }
-}
-
 resource "google_compute_instance" "netpulse" {
   name         = var.instance_name
   machine_type = var.machine_type
@@ -69,10 +55,6 @@ resource "google_compute_instance" "netpulse" {
   }
 
   metadata_startup_script = file("${path.module}/startup.sh")
-
-  service_account {
-    scopes = ["https://www.googleapis.com/auth/cloud-platform"]
-  }
 
   scheduling {
     automatic_restart   = true

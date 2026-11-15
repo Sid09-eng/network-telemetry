@@ -1,0 +1,10 @@
+{
+  "configuration_hashes": {
+    "docker-compose.yml": "f369427930ee4bd52925d61dd069860c68062d5d840ad862c14c56736ac8de3b",
+    "netpulse.clab.yml": "95bd8ea9d91f233740380b437cdef25d8b8f75923e8e79dbe948c1e84ce59fb9"
+  },
+  "events": "events.json",
+  "raw_iperf": "raw/iperf-receiver.json",
+  "run_id": "task10-remediated-short-20261115",
+  "schema_version": 1
+}

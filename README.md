@@ -88,10 +88,11 @@ datasource and Link Overview dashboard. Default local credentials are `admin` /
 
 The devcontainer runs as `root`, is privileged, and mounts Docker runtime paths plus your Docker Desktop socket. Docker Desktop does not expose `/run/docker/netns`, so that native-Linux-only mount is intentionally omitted. Open this only for the trusted repository: it can control Docker Desktop containers and networks.
 
-Terraform defines a single labelled Compute Engine VM, a dedicated VPC/subnet, and firewall rules
-restricted to your `admin_cidr`. It has no committed project ID, credentials, local state, or
-billing configuration. Run `make terraform-fmt` and `make terraform-validate` locally, then follow
-the reviewed [GCP deployment guide](docs/gcp-deployment.md) before any `plan` or `apply`. See the
+Terraform defines a single labelled Compute Engine VM, a dedicated VPC/subnet, and an SSH firewall
+restricted to your `admin_cidr`. It has no committed project ID, credentials, local state, billing
+configuration, or VM service-account attachment. Grafana remains loopback-only and is accessed over
+an SSH tunnel. Run `make terraform-fmt` and `make terraform-validate` locally, then follow the
+reviewed [GCP deployment guide](docs/gcp-deployment.md) before any `plan` or `apply`. See the
 [foundation plan](docs/plans/netpulse-foundation-plan.md) for ordered acceptance criteria.
 
 ## Traffic and faults

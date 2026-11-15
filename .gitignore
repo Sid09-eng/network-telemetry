@@ -35,7 +35,10 @@ crash.*.log
 runs/*
 !runs/.gitkeep
 !runs/README.md
-!runs/.gitkeep
+!runs/task10-control-short-20261115/
+!runs/task10-control-short-20261115/**
+!runs/task10-remediated-short-20261115/
+!runs/task10-remediated-short-20261115/**
 monitoring/grafana/data/
 remediation/audit.log
 results/raw/

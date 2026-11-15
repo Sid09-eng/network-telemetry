@@ -2,12 +2,34 @@
 
 from __future__ import annotations
 
+import hashlib
 import unittest
+from pathlib import Path
 
 from evaluate.mttr import ThroughputSample, evaluate_recovery, render_markdown
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 class MttrEvaluationTests(unittest.TestCase):
+    def test_published_mttr_source_artifacts_match_the_reported_manifest_hashes(self) -> None:
+        report = (ROOT / "results" / "mttr_metrics.md").read_text(encoding="utf-8")
+        expected_hashes = {
+            "task10-control-short-20261115": (
+                "d7c0f26326e6e3a51c790b654a645e9353f4962064c61c77a4be5a6cb59fb73b"
+            ),
+            "task10-remediated-short-20261115": (
+                "0e795af1ee6eb358ffa98ab1fe9a692763f263474f21c2a2342ecd8c4936555e"
+            ),
+        }
+
+        for run_id, expected_hash in expected_hashes.items():
+            manifest = ROOT / "runs" / run_id / "manifest.json"
+            self.assertTrue(manifest.is_file())
+            self.assertEqual(hashlib.sha256(manifest.read_bytes()).hexdigest(), expected_hash)
+            self.assertIn(run_id, report)
+            self.assertIn(expected_hash, report)
+
     def test_reports_first_of_three_sustained_samples_after_action(self) -> None:
         result = evaluate_recovery(
             samples=[
