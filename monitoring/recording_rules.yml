@@ -1,0 +1,28 @@
+groups:
+  - name: netpulse-link-telemetry
+    interval: 5s
+    rules:
+      - record: router_interface:receive_bits:rate1m
+        expr: rate(netpulse_interface_receive_bytes_total[1m]) * 8
+      - record: router_interface:transmit_bits:rate1m
+        expr: rate(netpulse_interface_transmit_bytes_total[1m]) * 8
+      - record: router_interface:receive_utilisation_ratio:rate1m
+        expr: |2
+            router_interface:receive_bits:rate1m
+          / on (router, interface, link)
+            netpulse_interface_capacity_bits_per_second
+      - record: router_interface:transmit_utilisation_ratio:rate1m
+        expr: |2
+            router_interface:transmit_bits:rate1m
+          / on (router, interface, link)
+            netpulse_interface_capacity_bits_per_second
+      - record: router_interface:errors:rate1m
+        expr: |2
+            rate(netpulse_interface_receive_errors_total[1m])
+          + on (router, interface, link)
+            rate(netpulse_interface_transmit_errors_total[1m])
+      - record: router_interface:drops:rate1m
+        expr: |2
+            rate(netpulse_interface_receive_drops_total[1m])
+          + on (router, interface, link)
+            rate(netpulse_interface_transmit_drops_total[1m])

@@ -1,0 +1,40 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "netpulse-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []},
+      "id": 1,
+      "title": "Transmit utilisation (1m)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "router_interface:transmit_utilisation_ratio:rate1m",
+          "legendFormat": "{{router}} {{interface}} → {{link}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "netpulse-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "bps"}, "overrides": []},
+      "id": 2,
+      "title": "Transmit throughput (1m)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "router_interface:transmit_bits:rate1m",
+          "legendFormat": "{{router}} {{interface}} → {{link}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["netpulse", "telemetry"],
+  "time": {"from": "now-15m", "to": "now"},
+  "title": "NetPulse Link Overview",
+  "uid": "netpulse-link-overview",
+  "version": 1
+}

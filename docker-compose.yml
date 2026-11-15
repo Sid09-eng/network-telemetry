@@ -1,0 +1,138 @@
+services:
+  exporter-r1:
+    build:
+      context: ./monitoring/exporter
+    environment:
+      NETPULSE_ROUTER: r1
+      NETPULSE_INTERFACE_LINKS: eth1:r1-r2,eth2:r1-r3,eth3:h1-r1
+      NETPULSE_LINK_CAPACITY_BPS: ${NETPULSE_LINK_CAPACITY_BPS:-100000000}
+    network_mode: "container:clab-netpulse-r1"
+    restart: unless-stopped
+
+  exporter-r2:
+    build:
+      context: ./monitoring/exporter
+    environment:
+      NETPULSE_ROUTER: r2
+      NETPULSE_INTERFACE_LINKS: eth1:r1-r2,eth2:r2-r4
+      NETPULSE_LINK_CAPACITY_BPS: ${NETPULSE_LINK_CAPACITY_BPS:-100000000}
+    network_mode: "container:clab-netpulse-r2"
+    restart: unless-stopped
+
+  exporter-r3:
+    build:
+      context: ./monitoring/exporter
+    environment:
+      NETPULSE_ROUTER: r3
+      NETPULSE_INTERFACE_LINKS: eth1:r1-r3,eth2:r3-r4
+      NETPULSE_LINK_CAPACITY_BPS: ${NETPULSE_LINK_CAPACITY_BPS:-100000000}
+    network_mode: "container:clab-netpulse-r3"
+    restart: unless-stopped
+
+  exporter-r4:
+    build:
+      context: ./monitoring/exporter
+    environment:
+      NETPULSE_ROUTER: r4
+      NETPULSE_INTERFACE_LINKS: eth1:r2-r4,eth2:r3-r4,eth3:r4-h2
+      NETPULSE_LINK_CAPACITY_BPS: ${NETPULSE_LINK_CAPACITY_BPS:-100000000}
+    network_mode: "container:clab-netpulse-r4"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.8.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    depends_on:
+      - exporter-r1
+      - exporter-r2
+      - exporter-r3
+      - exporter-r4
+      - alertmanager
+      - detector
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/recording_rules.yml:/etc/prometheus/recording_rules.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - control
+      - netpulse-mgmt
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-netpulse-local-only}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - control
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    networks:
+      - control
+    restart: unless-stopped
+
+  detector:
+    build:
+      context: ./detector
+    ports:
+      - "127.0.0.1:8001:8001"
+    environment:
+      NETPULSE_ANOMALY_THRESHOLD: ${NETPULSE_ANOMALY_THRESHOLD:-0.1}
+    networks:
+      - control
+    restart: unless-stopped
+
+  remediation:
+    build:
+      context: ./remediation
+    environment:
+      NETPULSE_DRY_RUN: ${NETPULSE_DRY_RUN:-true}
+      NETPULSE_ENABLE_LIVE_ACTIONS: ${NETPULSE_ENABLE_LIVE_ACTIONS:-false}
+      NETPULSE_REMEDIATION_COOLDOWN_SECONDS: ${NETPULSE_REMEDIATION_COOLDOWN_SECONDS:-300}
+      NETPULSE_REMEDIATION_COST: ${NETPULSE_REMEDIATION_COST:-100}
+      NETPULSE_REMEDIATION_COMMAND_TIMEOUT_SECONDS: ${NETPULSE_REMEDIATION_COMMAND_TIMEOUT_SECONDS:-10}
+      NETPULSE_REMEDIATION_AUDIT_PATH: /data/audit.jsonl
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - remediation-data:/data
+    networks:
+      - control
+    restart: unless-stopped
+
+networks:
+  control:
+  netpulse-mgmt:
+    external: true
+    name: netpulse-mgmt
+
+volumes:
+  alertmanager-data:
+  grafana-data:
+  prometheus-data:
+  remediation-data:

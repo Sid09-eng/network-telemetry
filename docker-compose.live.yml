@@ -1,0 +1,5 @@
+# Explicit opt-in for controlled live remediation only; never use for routine dry-run monitoring.
+services:
+  remediation:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

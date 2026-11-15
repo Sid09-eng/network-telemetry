@@ -1,0 +1,12 @@
+id: diamond-failover
+traffic:
+  seed: 17
+  compressed_day_seconds: 120
+  target_rate_mbps: 25
+faults:
+  - id: r1-r2-down
+    at_seconds: 60
+    link: r1-r2
+    action: link_down
+    parameters:
+      restore_after_seconds: 20

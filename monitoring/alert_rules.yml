@@ -1,0 +1,12 @@
+groups:
+  - name: netpulse-anomalies
+    interval: 5s
+    rules:
+      - alert: NetPulseLinkAnomaly
+        expr: netpulse_anomaly_active > 0
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: NetPulse residual anomaly on {{ $labels.link }}
+          description: Residual score is {{ $value }} above the configured validation threshold.

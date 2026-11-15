@@ -1,0 +1,48 @@
+# Environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+*credentials*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.Python
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Terraform: configuration example is tracked; state and real variables are not
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+
+# Runtime state, telemetry captures, and generated evidence
+runs/*
+!runs/.gitkeep
+!runs/README.md
+!runs/.gitkeep
+monitoring/grafana/data/
+remediation/audit.log
+results/raw/
+*.parquet
+topology/clab-*/
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/

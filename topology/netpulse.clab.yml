@@ -1,0 +1,54 @@
+name: netpulse
+
+mgmt:
+  network: netpulse-mgmt
+  ipv4-subnet: 172.20.20.0/24
+
+topology:
+  groups:
+    routers:
+      kind: frr
+      image: quay.io/frrouting/frr:containerlab-10.7.1
+      daemons:
+        - ospfd
+    hosts:
+      kind: linux
+      image: netpulse-traffic-host:0.1.0
+
+  nodes:
+    r1:
+      group: routers
+      mgmt-ipv4: 172.20.20.11
+      startup-config: configs/r1.conf
+    r2:
+      group: routers
+      mgmt-ipv4: 172.20.20.12
+      startup-config: configs/r2.conf
+    r3:
+      group: routers
+      mgmt-ipv4: 172.20.20.13
+      startup-config: configs/r3.conf
+    r4:
+      group: routers
+      mgmt-ipv4: 172.20.20.14
+      startup-config: configs/r4.conf
+    h1:
+      group: hosts
+      exec:
+        - ip link set eth1 up
+        - ip addr add 10.0.1.2/24 dev eth1
+        - ip route replace 10.0.4.0/24 via 10.0.1.1 dev eth1
+    h2:
+      group: hosts
+      exec:
+        - ip link set eth1 up
+        - ip addr add 10.0.4.2/24 dev eth1
+        - ip route replace 10.0.1.0/24 via 10.0.4.1 dev eth1
+
+  links:
+    - endpoints: ["r1:eth1", "r2:eth1"]
+    - endpoints: ["r1:eth2", "r3:eth1"]
+    - endpoints: ["r2:eth2", "r4:eth1"]
+    - endpoints: ["r3:eth2", "r4:eth2"]
+    - endpoints: ["h1:eth1", "r1:eth3"]
+    - endpoints: ["h2:eth1", "r4:eth3"]
