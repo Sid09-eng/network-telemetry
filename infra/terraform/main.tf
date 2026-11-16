@@ -56,6 +56,12 @@ resource "google_compute_instance" "netpulse" {
 
   metadata_startup_script = file("${path.module}/startup.sh")
 
+  # Metadata startup scripts run only during boot. Updating their source must not
+  # replace an already-validated VM; recreate intentionally to consume a new script.
+  lifecycle {
+    ignore_changes = [metadata_startup_script]
+  }
+
   scheduling {
     automatic_restart   = true
     on_host_maintenance = "MIGRATE"

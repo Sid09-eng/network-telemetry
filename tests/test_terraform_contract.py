@@ -29,6 +29,7 @@ class TerraformContractTests(unittest.TestCase):
         self.assertNotIn("0.0.0.0/0", configuration)
         self.assertNotIn('resource "google_compute_firewall" "ui"', configuration)
         self.assertNotIn("service_account {", configuration)
+        self.assertIn("ignore_changes = [metadata_startup_script]", configuration)
         self.assertIn('output "grafana_tunnel_command"', outputs)
         self.assertNotIn('output "grafana_url"', outputs)
 
