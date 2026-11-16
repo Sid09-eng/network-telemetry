@@ -46,7 +46,8 @@ GitHub Actions runs on pushes and pull requests to `main`. It installs Python de
 dependencies, lints and tests the project, validates Compose syntax, builds service and
 traffic-host images, and runs Terraform formatting/validation with no cloud credentials or
 `terraform apply`. A separate Gitleaks job scans the full reachable Git history. Dependabot
-opens weekly update pull requests for GitHub Actions, Python, and Docker dependencies.
+opens weekly update pull requests for GitHub Actions and Python dependencies. Container-image
+pins are changed only through an explicit, tested compatibility update.
 
 Containerlab is deliberately excluded from hosted CI: its smoke test needs a stable privileged
 Linux runner. Run the topology acceptance checks from the Linux devcontainer or the GCP host.

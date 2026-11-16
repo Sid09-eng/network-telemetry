@@ -37,12 +37,14 @@ class ContinuousIntegrationContractTests(unittest.TestCase):
         self.assertNotIn("GOOGLE_APPLICATION_CREDENTIALS", workflow)
         self.assertNotIn("actions/checkout@v4", workflow)
 
-    def test_dependabot_tracks_action_and_python_dependencies(self) -> None:
+    def test_dependabot_tracks_action_and_python_dependencies_without_unreviewed_image_jumps(
+        self,
+    ) -> None:
         dependabot = DEPENDABOT.read_text(encoding="utf-8")
 
         self.assertIn('package-ecosystem: "github-actions"', dependabot)
         self.assertIn('package-ecosystem: "pip"', dependabot)
-        self.assertIn('package-ecosystem: "docker"', dependabot)
+        self.assertNotIn('package-ecosystem: "docker"', dependabot)
         self.assertIn("interval: weekly", dependabot)
 
 
