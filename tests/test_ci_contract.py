@@ -17,6 +17,8 @@ class ContinuousIntegrationContractTests(unittest.TestCase):
         for required in (
             "pull_request:",
             "push:",
+            "actions/checkout@v7",
+            "actions/setup-python@v7",
             'python-version: "3.11"',
             'python -m pip install -e ".[dev]"',
             "make lint",
@@ -33,6 +35,7 @@ class ContinuousIntegrationContractTests(unittest.TestCase):
 
         self.assertNotIn("terraform apply", workflow)
         self.assertNotIn("GOOGLE_APPLICATION_CREDENTIALS", workflow)
+        self.assertNotIn("actions/checkout@v4", workflow)
 
     def test_dependabot_tracks_action_and_python_dependencies(self) -> None:
         dependabot = DEPENDABOT.read_text(encoding="utf-8")
