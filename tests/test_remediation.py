@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import json
+import math
+import os
 import subprocess
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from remediation.actions import OspfCostAdapter
-from remediation.app import create_app
+from remediation.app import RemediationConfig, create_app
 from remediation.audit import append_audit
 from remediation.policy import CooldownPolicy, PolicyError, parse_alertmanager_payload
 from remediation.service import RemediationService
@@ -73,6 +76,22 @@ class AlertmanagerPolicyTests(unittest.TestCase):
         self.assertTrue(policy.allow(target, now=100.0))
         self.assertFalse(policy.allow(target, now=129.9))
         self.assertTrue(policy.allow(target, now=130.0))
+
+    def test_cooldown_rejects_non_finite_values(self) -> None:
+        for value in (math.inf, -math.inf, math.nan):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "finite"):
+                CooldownPolicy(cooldown_seconds=value)
+
+
+class RemediationConfigurationTests(unittest.TestCase):
+    def test_environment_rejects_non_finite_cooldown_and_timeout(self) -> None:
+        for name in (
+            "NETPULSE_REMEDIATION_COOLDOWN_SECONDS",
+            "NETPULSE_REMEDIATION_COMMAND_TIMEOUT_SECONDS",
+        ):
+            with self.subTest(name=name), patch.dict(os.environ, {name: "nan"}, clear=False):
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    RemediationConfig.from_env()
 
 
 class OspfCostAdapterTests(unittest.TestCase):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -53,8 +54,14 @@ class RemediationConfig:
             ),
             audit_path=Path(os.environ.get("NETPULSE_REMEDIATION_AUDIT_PATH", "/data/audit.jsonl")),
         )
-        if config.cooldown_seconds < 0:
-            raise ValueError("NETPULSE_REMEDIATION_COOLDOWN_SECONDS must be non-negative")
+        if not math.isfinite(config.cooldown_seconds) or config.cooldown_seconds < 0:
+            raise ValueError(
+                "NETPULSE_REMEDIATION_COOLDOWN_SECONDS must be finite and non-negative"
+            )
+        if not math.isfinite(config.command_timeout_seconds) or config.command_timeout_seconds <= 0:
+            raise ValueError(
+                "NETPULSE_REMEDIATION_COMMAND_TIMEOUT_SECONDS must be finite and positive"
+            )
         return config
 
 

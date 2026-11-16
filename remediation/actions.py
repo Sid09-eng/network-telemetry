@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import subprocess
 import time
 from collections.abc import Callable
@@ -66,8 +67,8 @@ class OspfCostAdapter:
     ) -> None:
         if not 1 <= cost <= 65_535:
             raise ValueError("cost must be between 1 and 65535")
-        if timeout_seconds <= 0:
-            raise ValueError("timeout_seconds must be positive")
+        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be finite and positive")
         self.dry_run = dry_run
         self.cost = cost
         self.timeout_seconds = timeout_seconds
