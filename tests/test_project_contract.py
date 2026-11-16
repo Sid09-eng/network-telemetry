@@ -29,6 +29,8 @@ class ProjectContractTests(unittest.TestCase):
 
         self.assertIn('name = "netpulse"', pyproject)
         self.assertIn('requires-python = ">=3.11,<3.13"', pyproject)
+        self.assertIn("[tool.hatch.build.targets.wheel]", pyproject)
+        self.assertIn('packages = ["forecast", "monitoring", "remediation", "traffic"]', pyproject)
         self.assertIn(".env", gitignore)
         self.assertIn("*.tfstate", gitignore)
         self.assertIn("NETPULSE_DRY_RUN=true", env_example)
