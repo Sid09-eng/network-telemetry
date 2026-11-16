@@ -2,10 +2,10 @@
 
 Simulated network telemetry, leakage-aware link-utilisation forecasting, anomaly detection, and guarded auto-remediation.
 
-> Status: Tasks 1–10 are implemented with source-backed local evidence. Task 11 Terraform
-> configuration is locally formatted and provider-validated; GCP deployment remains pending
-> approved project, billing, and operator credentials. A live remediation test requires explicit
-> operator enablement.
+> Status: Tasks 1–11 are implemented with source-backed local evidence and GCP live-deployment
+> acceptance. Task 12 CI remains next. GCP project identifiers, billing details, addresses, local
+> state, and operator credentials remain outside this repository. A live remediation test requires
+> explicit operator enablement.
 
 ## Scope
 
