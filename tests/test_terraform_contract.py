@@ -38,6 +38,7 @@ class TerraformContractTests(unittest.TestCase):
         deployment = (ROOT / "docs" / "gcp-deployment.md").read_text(encoding="utf-8")
 
         self.assertIn("systemctl enable --now docker", startup)
+        self.assertIn("apt-get install -y ca-certificates curl git make python3", startup)
         self.assertNotIn("GOOGLE_APPLICATION_CREDENTIALS", startup)
         self.assertIn("CONTAINERLAB_VERSION", startup)
         self.assertIn("containerlab_${CONTAINERLAB_VERSION}", startup)
