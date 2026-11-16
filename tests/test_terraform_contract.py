@@ -22,6 +22,8 @@ class TerraformContractTests(unittest.TestCase):
         outputs = (TERRAFORM / "outputs.tf").read_text(encoding="utf-8")
 
         self.assertIn("auto_create_subnetworks = false", configuration)
+        self.assertIn('image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"', configuration)
+        self.assertNotIn('image = "ubuntu-os-cloud/ubuntu-2404-lts"', configuration)
         self.assertIn("source_ranges = [var.admin_cidr]", configuration)
         self.assertIn('target_tags   = ["netpulse"]', configuration)
         self.assertNotIn("0.0.0.0/0", configuration)
