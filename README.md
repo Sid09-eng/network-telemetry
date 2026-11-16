@@ -3,7 +3,8 @@
 Simulated network telemetry, leakage-aware link-utilisation forecasting, anomaly detection, and guarded auto-remediation.
 
 > Status: Tasks 1–11 are implemented with source-backed local evidence and GCP live-deployment
-> acceptance. Task 12 CI is implemented and pending its first GitHub Actions run. GCP project identifiers, billing details, addresses, local
+> acceptance. Tasks 1–12 are implemented; the first GitHub Actions CI and full-history secret scan
+> passed on `main`. GCP project identifiers, billing details, addresses, local
 > state, and operator credentials remain outside this repository. A live remediation test requires
 > explicit operator enablement.
 
