@@ -40,6 +40,7 @@ class TerraformContractTests(unittest.TestCase):
         self.assertNotIn("GOOGLE_APPLICATION_CREDENTIALS", startup)
         self.assertIn("CONTAINERLAB_VERSION", startup)
         self.assertIn("containerlab_${CONTAINERLAB_VERSION}", startup)
+        self.assertIn("/opt/netpulse/app", startup)
         self.assertIn("terraform destroy", deployment)
         self.assertIn("budget", deployment.lower())
 

@@ -51,9 +51,15 @@ terraform -chdir=infra/terraform output -raw ssh_command
 
 The startup script installs signed Docker packages, pinned Containerlab `0.83.0`, and prepares
 `/opt/netpulse`; it deliberately does not clone a repository or carry credentials. Use the SSH
-output to copy or clone a reviewed checkout, then follow the repository's Linux topology and
-monitoring instructions on the VM. To access Grafana, run this locally, keep the tunnel open, and
-browse to `http://127.0.0.1:3000`:
+output to clone the public reviewed checkout into `/opt/netpulse/app`, then follow the repository's
+Linux topology and monitoring instructions on the VM:
+
+```bash
+git clone https://github.com/Sid09-eng/network-telemetry.git /opt/netpulse/app
+cd /opt/netpulse/app
+```
+
+To access Grafana, run this locally, keep the tunnel open, and browse to `http://127.0.0.1:3000`:
 
 ```bash
 terraform -chdir=infra/terraform output -raw grafana_tunnel_command

@@ -34,7 +34,8 @@ mkdir -p /opt/netpulse
 cat > /opt/netpulse/README <<'EOF'
 NetPulse host prepared.
 
-Docker and Containerlab 0.83.0 are installed. Deploy a reviewed NetPulse checkout to /opt/netpulse,
-then run the documented topology and Docker Compose commands as an approved operator. This startup
-script intentionally does not embed a repository URL, branch, credentials, or GCP project identifiers.
+Docker and Containerlab 0.83.0 are installed. Clone a reviewed NetPulse checkout into
+/opt/netpulse/app, then run the documented topology and Docker Compose commands as an approved
+operator. This startup script intentionally does not embed a repository URL, branch, credentials,
+or GCP project identifiers.
 EOF
