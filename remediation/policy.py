@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 
@@ -75,8 +76,8 @@ class CooldownPolicy:
     """Monotonic per-interface cooldown with no wall-clock dependency."""
 
     def __init__(self, *, cooldown_seconds: float) -> None:
-        if cooldown_seconds < 0:
-            raise ValueError("cooldown_seconds must be non-negative")
+        if not math.isfinite(cooldown_seconds) or cooldown_seconds < 0:
+            raise ValueError("cooldown_seconds must be finite and non-negative")
         self.cooldown_seconds = cooldown_seconds
         self._last_applied: dict[tuple[str, str], float] = {}
 

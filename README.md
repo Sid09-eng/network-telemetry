@@ -46,7 +46,8 @@ GitHub Actions runs on pushes and pull requests to `main`. It installs Python de
 dependencies, lints and tests the project, validates Compose syntax, builds service and
 traffic-host images, and runs Terraform formatting/validation with no cloud credentials or
 `terraform apply`. A separate Gitleaks job scans the full reachable Git history. Dependabot
-opens weekly update pull requests for GitHub Actions, Python, and Docker dependencies.
+opens weekly update pull requests for GitHub Actions and Python dependencies. Container-image
+pins are changed only through an explicit, tested compatibility update.
 
 Containerlab is deliberately excluded from hosted CI: its smoke test needs a stable privileged
 Linux runner. Run the topology acceptance checks from the Linux devcontainer or the GCP host.
@@ -102,7 +103,7 @@ The devcontainer runs as `root`, is privileged, and mounts Docker runtime paths 
 
 Terraform defines a single labelled Compute Engine VM, a dedicated VPC/subnet, and an SSH firewall
 restricted to your `admin_cidr`. It has no committed project ID, credentials, local state, billing
-configuration, or VM service-account attachment. Grafana remains loopback-only and is accessed over
+configuration, and explicitly attaches no VM service account. Grafana remains loopback-only and is accessed over
 an SSH tunnel. Run `make terraform-fmt` and `make terraform-validate` locally, then follow the
 reviewed [GCP deployment guide](docs/gcp-deployment.md) before any `plan` or `apply`. See the
 [foundation plan](docs/plans/netpulse-foundation-plan.md) for ordered acceptance criteria.

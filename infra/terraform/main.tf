@@ -54,6 +54,13 @@ resource "google_compute_instance" "netpulse" {
     access_config {}
   }
 
+  # Omitting this block attaches the project's default Compute Engine service account.
+  # NetPulse needs no Google API identity, so request no service account explicitly.
+  service_account {
+    email  = null
+    scopes = []
+  }
+
   metadata_startup_script = file("${path.module}/startup.sh")
 
   # Metadata startup scripts run only during boot. Updating their source must not

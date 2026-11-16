@@ -8,19 +8,3 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-  - package-ecosystem: "docker"
-    directory: "/detector"
-    schedule:
-      interval: weekly
-  - package-ecosystem: "docker"
-    directory: "/remediation"
-    schedule:
-      interval: weekly
-  - package-ecosystem: "docker"
-    directory: "/monitoring/exporter"
-    schedule:
-      interval: weekly
-  - package-ecosystem: "docker"
-    directory: "/traffic"
-    schedule:
-      interval: weekly
