@@ -3,7 +3,7 @@
 Simulated network telemetry, leakage-aware link-utilisation forecasting, anomaly detection, and guarded auto-remediation.
 
 > Status: Tasks 1–11 are implemented with source-backed local evidence and GCP live-deployment
-> acceptance. Task 12 CI remains next. GCP project identifiers, billing details, addresses, local
+> acceptance. Task 12 CI is implemented and pending its first GitHub Actions run. GCP project identifiers, billing details, addresses, local
 > state, and operator credentials remain outside this repository. A live remediation test requires
 > explicit operator enablement.
 
@@ -38,6 +38,17 @@ make check
 ```
 
 `NETPULSE_DRY_RUN=true` is default. Do not put GCP credentials, Terraform variables, Grafana state, fault captures, or remediation audit logs in Git.
+
+## Continuous integration and secret scanning
+
+GitHub Actions runs on pushes and pull requests to `main`. It installs Python development
+dependencies, lints and tests the project, validates Compose syntax, builds service and
+traffic-host images, and runs Terraform formatting/validation with no cloud credentials or
+`terraform apply`. A separate Gitleaks job scans the full reachable Git history. Dependabot
+opens weekly update pull requests for GitHub Actions, Python, and Docker dependencies.
+
+Containerlab is deliberately excluded from hosted CI: its smoke test needs a stable privileged
+Linux runner. Run the topology acceptance checks from the Linux devcontainer or the GCP host.
 
 ## Telemetry contract
 
