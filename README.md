@@ -283,8 +283,9 @@ values—and follows this flow:
 | --- | --- |
 | Topology acceptance | `scripts/check_topology.py` queries the live FRR routers; the GIF records its successful OSPF/ECMP output. |
 | Monitoring evidence | Prometheus readiness, target, and recording-rule queries are fetched from the live local API. Grafana health is fetched from its live local API. |
+| Live acceptance snapshot | [17 November 2026 live snapshot](results/live-demo-20261117.md) and its [sanitized JSON data](results/live-demo-20261117.json) record the topology, service health, dry-run boundary, and selected measured throughput values from one controlled traffic run. |
 | Forecast/anomaly/MTTR experiments | Immutable run folders under `runs/task10-*`, their manifests/hashes, and [MTTR results](results/mttr_metrics.md) are the experiment record. They are synthetic controlled experiments, not production SLO evidence. |
-| Automated verification | **72 automated tests** are run by `make test`; `make lint` runs Ruff. The [GitHub Actions workflow](.github/workflows/ci.yml) additionally validates Compose, Terraform, and reachable Git history with Gitleaks. |
+| Automated verification | **73 automated tests** are run by `make test`; `make lint` runs Ruff. The [GitHub Actions workflow](.github/workflows/ci.yml) additionally validates Compose, Terraform, and reachable Git history with Gitleaks. |
 | Deployment evidence | [GCP deployment guidance](docs/gcp-deployment.md) documents the reviewed, loopback-only deployment acceptance without committing cloud identifiers or credentials. |
 | Demo asset | [docs/demo.gif](docs/demo.gif) is generated after the live checks above; it includes the capture timestamp and direct endpoint output so its provenance can be independently inspected. |
 
