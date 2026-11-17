@@ -1,4 +1,4 @@
-"""Offline contracts for the Task 12 GitHub Actions quality gates."""
+"""Offline contracts for the Step 12 GitHub Actions quality gates."""
 
 from __future__ import annotations
 

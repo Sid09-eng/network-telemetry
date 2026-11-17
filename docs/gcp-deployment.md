@@ -1,34 +1,17 @@
-# GCP deployment and cost controls
+# GCP deployment reference
 
-Task 11 deploys one Ubuntu 24.04 Compute Engine VM for the NetPulse demonstration. It creates a
-dedicated VPC/subnet, a VM, and one ingress rule: SSH is reachable only from `admin_cidr`. Grafana,
-Prometheus, Alertmanager, detector, and remediation remain bound to VM loopback and are not exposed
-to the internet; there is no `0.0.0.0/0` ingress rule.
+The Terraform profile creates one Ubuntu 24.04 VM, a dedicated VPC/subnet, and SSH restricted to
+`admin_cidr`. The monitoring services remain loopback-only; no application port is publicly
+exposed and no VM service account is attached.
 
-## Before planning
+## Configuration
 
-1. Create or select a GCP project and enable billing. Do not put its ID, billing account, or
-   credentials in this repository.
-2. Enable the Compute Engine API in that project.
-3. Authenticate Terraform using an approved local Application Default Credential or a
-   least-privilege service account. Keep credential files outside the repository.
-4. Copy the example and replace every placeholder with the approved values:
+Create `infra/terraform/terraform.tfvars` from the example with the approved project ID, region,
+zone, and a `/32` administrator CIDR. Keep that file, Terraform state, plans, and credentials out
+of Git. Enable Compute Engine and set a project budget before applying; a budget sends alerts but
+does not stop resources automatically.
 
-   ```bash
-   cp infra/terraform/terraform.tfvars.example infra/terraform/terraform.tfvars
-   ```
-
-   Set `admin_cidr` to your current public IP with a `/32` suffix. Do not use a broad internet
-   range merely to make the firewall work.
-
-5. In Cloud Billing, create a budget for this project before applying. Use a small monthly amount,
-   email alerts at 50%, 90%, and 100%, and label the project or VM for the demo. Budgets alert on
-   spend; they do not automatically stop running resources, so teardown remains the operator's
-   responsibility.
-
-## Local checks and review
-
-Run these commands before any cloud change:
+## Validate and apply
 
 ```bash
 make terraform-fmt
@@ -36,43 +19,35 @@ make terraform-validate
 terraform -chdir=infra/terraform plan -out=tfplan
 ```
 
-Read the plan and confirm it creates only the NetPulse network, subnet, one restricted firewall,
-and one labelled VM without a Compute Engine service account. `plan`, `apply`, and state files can contain project identifiers, so do not
-commit them.
-
-## Apply and deploy the stack
-
-Only after reviewing the plan and confirming the budget alert:
+Review the plan for the expected VM, subnet, restricted SSH rule, and no service account.
 
 ```bash
 terraform -chdir=infra/terraform apply tfplan
 terraform -chdir=infra/terraform output -raw ssh_command
 ```
 
-The startup script installs signed Docker packages, pinned Containerlab `0.83.0`, and prepares
-`/opt/netpulse`; it deliberately does not clone a repository or carry credentials. Use the SSH
-output to clone the public reviewed checkout into `/opt/netpulse/app`, then follow the repository's
-Linux topology and monitoring instructions on the VM:
+The startup script installs Docker, Containerlab 0.83.0, and base tooling in `/opt/netpulse`.
+Clone the repository to `/opt/netpulse/app` after the VM is available:
 
 ```bash
 git clone https://github.com/Sid09-eng/network-telemetry.git /opt/netpulse/app
 cd /opt/netpulse/app
 ```
 
-To access Grafana, run this locally, keep the tunnel open, and browse to `http://127.0.0.1:3000`:
+Access Grafana through the generated SSH tunnel at `http://127.0.0.1:3000`:
 
 ```bash
 terraform -chdir=infra/terraform output -raw grafana_tunnel_command
 ```
 
-## Teardown and cost control
+## Teardown
 
-Stop the demo promptly and remove every Terraform-managed resource:
+Remove the Terraform-managed VM, network, subnet, and firewall when the environment is no longer
+needed:
 
 ```bash
 terraform -chdir=infra/terraform destroy
 ```
 
-Confirm the instance, disks, VPC, and firewall rules are gone in the GCP console. Retain nothing
-unless you explicitly choose to keep it and accept the ongoing cost. Review the billing budget
-notifications after teardown; they are an alerting aid, not proof of zero final charges.
+Confirm the resources are gone in the GCP console. Billing alerts are a cost signal, not proof of
+zero final charges.
