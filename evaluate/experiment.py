@@ -136,6 +136,7 @@ def write_trial_evidence(
     raw_iperf: Mapping[str, Any],
     events: Mapping[str, Any],
     config_paths: Sequence[Path],
+    extra_artifacts: Mapping[str, str | bytes] | None = None,
 ) -> dict[str, Any]:
     """Atomically publish one evidence run after all inputs have been validated."""
     if not run_id or "/" in run_id or (runs_root / run_id).exists():
@@ -146,12 +147,26 @@ def write_trial_evidence(
             raise ValueError(f"invalid configuration path: {path}")
         hashes[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
     iperf_receiver_samples(raw_iperf)
+    artifacts = extra_artifacts or {}
+    if any(
+        Path(name).is_absolute()
+        or ".." in Path(name).parts
+        or name in {"raw/iperf-receiver.json", "events.json", "manifest.json"}
+        for name in artifacts
+    ):
+        raise ValueError("extra artifact path must be a new relative path")
     manifest = {
         "schema_version": 1,
         "run_id": run_id,
         "raw_iperf": "raw/iperf-receiver.json",
         "events": "events.json",
         "configuration_hashes": hashes,
+        "artifact_hashes": {
+            name: hashlib.sha256(
+                value.encode("utf-8") if isinstance(value, str) else value
+            ).hexdigest()
+            for name, value in sorted(artifacts.items())
+        },
     }
     runs_root.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f".{run_id}.", dir=runs_root))
@@ -163,6 +178,10 @@ def write_trial_evidence(
         (staging / "events.json").write_text(
             json.dumps(dict(events), indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
+        for name, value in artifacts.items():
+            artifact = staging / name
+            artifact.parent.mkdir(parents=True, exist_ok=True)
+            artifact.write_bytes(value.encode("utf-8") if isinstance(value, str) else value)
         (staging / "manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )

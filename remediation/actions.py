@@ -136,3 +136,37 @@ class OspfCostAdapter:
             rollback_output="",
             latency_seconds=time.monotonic() - started,
         )
+
+    def rollback(self, target: RemediationTarget) -> ActionResult:
+        """Remove a prior live cost after its alert resolves."""
+        command = self._command(target, "no ip ospf cost")
+        if self.dry_run:
+            return ActionResult(
+                status="dry-run",
+                command=command,
+                action_output="not executed: NETPULSE_DRY_RUN is enabled",
+                rollback_status="not-needed",
+                rollback_output="",
+                latency_seconds=0.0,
+            )
+
+        started = time.monotonic()
+        try:
+            completed = self.runner(command, self.timeout_seconds)
+        except (OSError, subprocess.SubprocessError) as error:
+            return ActionResult(
+                status="rollback-failed",
+                command=command,
+                action_output=_output(error),
+                rollback_status="failed",
+                rollback_output="",
+                latency_seconds=time.monotonic() - started,
+            )
+        return ActionResult(
+            status="rolled-back",
+            command=command,
+            action_output=(completed.stdout + completed.stderr).strip(),
+            rollback_status="succeeded",
+            rollback_output="",
+            latency_seconds=time.monotonic() - started,
+        )
