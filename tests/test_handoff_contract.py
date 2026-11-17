@@ -50,6 +50,11 @@ class HandoffContractTests(unittest.TestCase):
         self.assertNotIn('cp .env.example .env  # only if .env does not already exist', readme)
         self.assertIn("wait_for_http", quickstart)
         self.assertIn("http://127.0.0.1:9090/-/ready", quickstart)
+        self.assertIn("deadline=$((SECONDS + 60))", quickstart)
+        self.assertIn("--connect-timeout 2", quickstart)
+        self.assertIn('--max-time "$remaining"', quickstart)
+        self.assertIn("deadline=$((SECONDS + 60))", readme)
+        self.assertIn("--connect-timeout 2", readme)
 
     def test_capture_reports_a_validated_remediation_mode(self) -> None:
         specification = importlib.util.spec_from_file_location(

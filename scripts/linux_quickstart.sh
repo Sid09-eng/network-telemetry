@@ -34,12 +34,16 @@ fi
 
 wait_for_http() {
   local url="$1"
-  local attempt
-  for attempt in {1..30}; do
-    if curl --fail --silent "$url" >/dev/null; then
+  local deadline=$((SECONDS + 60))
+  local remaining
+  while (( SECONDS < deadline )); do
+    remaining=$((deadline - SECONDS))
+    if curl --fail --silent --connect-timeout 2 --max-time "$remaining" "$url" >/dev/null; then
       return 0
     fi
-    sleep 2
+    if (( SECONDS < deadline )); then
+      sleep 1
+    fi
   done
   echo "Timed out waiting for ${url} after 60 seconds." >&2
   return 1
