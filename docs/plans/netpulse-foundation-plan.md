@@ -50,6 +50,9 @@ claiming operator-network performance.
 - [x] **Step 14 — Continuous inference.** A Compose worker polls Prometheus utilisation every
   five seconds, builds bounded in-memory features, scores persistence residuals, and publishes
   one conservative score per physical link to the detector.
+- [x] **Step 20 — Cloud VM alerting.** Terraform scopes Cloud Monitoring policies to the managed
+  Compute Engine instance for absent telemetry and sustained CPU saturation; email delivery is
+  optional and must be confirmed by its recipient.
 
 ## Verification model
 
@@ -60,6 +63,7 @@ claiming operator-network performance.
 | Traffic and faults | Deterministic schedules with explicit applied/unapplied outcomes |
 | Forecasting | Time-ordered and held-out-link evaluation |
 | Continuous inference | Live Prometheus polling, cadence handling, residual scoring, and detector publication |
+| Cloud VM alerts | Terraform-managed absent-telemetry and sustained-CPU policies scoped to the instance ID |
 | Remediation | Allow-list, dry-run, cooldown, rollback, and audit contracts |
 | Recovery | Sustained-throughput restoration criterion over matched source runs |
 | Deployment | Terraform formatting and validation without cloud credentials |

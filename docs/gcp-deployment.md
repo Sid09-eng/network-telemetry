@@ -2,7 +2,9 @@
 
 The Terraform profile creates one Ubuntu 24.04 VM, a dedicated VPC/subnet, and SSH restricted to
 `admin_cidr`. The monitoring services remain loopback-only; no application port is publicly
-exposed and no VM service account is attached.
+exposed and no VM service account is attached. Cloud Monitoring manages two VM-level policies:
+missing CPU telemetry for five minutes and CPU utilisation above the configured threshold for ten
+minutes.
 
 ## Configuration
 
@@ -11,16 +13,11 @@ zone, and a `/32` administrator CIDR. Keep that file, Terraform state, plans, an
 of Git. Enable Compute Engine and set a project budget before applying; a budget sends alerts but
 does not stop resources automatically.
 
-Terraform uses local Application Default Credentials; authenticate before planning with an account
-that has only the GCP roles approved for this demonstration. Keep credential files outside this
-checkout. `gcloud` must be installed and authenticated as the same operator before using the SSH
-commands emitted by Terraform.
-
-```bash
-gcloud auth login
-gcloud auth application-default login
-gcloud config set project "<project-id>"
-```
+`alert_notification_email` is optional. When set, Terraform creates an email notification channel;
+the recipient must confirm Google's verification email before it receives policy notifications.
+Leaving it `null` retains alert incidents in Cloud Monitoring without sending email. These are VM
+health signals only: NetPulse services stay loopback-only and are not exposed to an external uptime
+probe.
 
 ## Validate and apply
 
@@ -43,13 +40,9 @@ Clone the repository to `/opt/netpulse/app` after the VM is available:
 ```bash
 git clone https://github.com/Sid09-eng/network-telemetry.git /opt/netpulse/app
 cd /opt/netpulse/app
-sudo make topology-up
-sudo make topology-check
-sudo make monitoring-up
 ```
 
-After the topology check and monitoring startup succeed, access Grafana through the generated SSH
-tunnel at `http://127.0.0.1:3000`:
+Access Grafana through the generated SSH tunnel at `http://127.0.0.1:3000`:
 
 ```bash
 terraform -chdir=infra/terraform output -raw grafana_tunnel_command

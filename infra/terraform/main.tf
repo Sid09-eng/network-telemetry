@@ -80,3 +80,89 @@ resource "google_compute_instance" "netpulse" {
     enable_integrity_monitoring = true
   }
 }
+
+locals {
+  netpulse_instance_metric_filter = join(" AND ", [
+    "metric.type = \"compute.googleapis.com/instance/cpu/utilization\"",
+    "resource.type = \"gce_instance\"",
+    "resource.label.\"instance_id\" = \"${google_compute_instance.netpulse.instance_id}\"",
+  ])
+  alert_notification_channels = google_monitoring_notification_channel.operator[*].name
+}
+
+# Email delivery is optional: a policy without a channel remains visible in Cloud Monitoring,
+# while a configured address must be confirmed by the recipient before Google sends notifications.
+resource "google_monitoring_notification_channel" "operator" {
+  count = var.alert_notification_email == null ? 0 : 1
+
+  display_name = "NetPulse operator email"
+  type         = "email"
+  labels = {
+    email_address = var.alert_notification_email
+  }
+}
+
+resource "google_monitoring_alert_policy" "vm_unavailable" {
+  display_name          = "NetPulse VM telemetry absent"
+  combiner              = "OR"
+  enabled               = true
+  notification_channels = local.alert_notification_channels
+  user_labels = {
+    app        = "netpulse"
+    managed_by = "terraform"
+  }
+
+  documentation {
+    mime_type = "text/markdown"
+    content   = "Compute Engine has not emitted NetPulse VM CPU telemetry for five minutes. Check VM status and Cloud Monitoring metric ingestion."
+  }
+
+  conditions {
+    display_name = "No VM CPU telemetry for five minutes"
+
+    condition_absent {
+      filter   = local.netpulse_instance_metric_filter
+      duration = "300s"
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+}
+
+resource "google_monitoring_alert_policy" "cpu_saturation" {
+  display_name          = "NetPulse VM CPU saturation"
+  combiner              = "OR"
+  enabled               = true
+  notification_channels = local.alert_notification_channels
+  user_labels = {
+    app        = "netpulse"
+    managed_by = "terraform"
+  }
+
+  documentation {
+    mime_type = "text/markdown"
+    content   = "NetPulse VM CPU utilisation exceeded the configured threshold for ten minutes. Inspect the local monitoring stack and VM workload."
+  }
+
+  conditions {
+    display_name = "VM CPU utilisation above threshold for ten minutes"
+
+    condition_threshold {
+      filter          = local.netpulse_instance_metric_filter
+      duration        = "600s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.cpu_utilization_alert_threshold
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+}
