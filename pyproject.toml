@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.27,<2"]
+requires = ["hatchling>=1.33.0,<2"]
 build-backend = "hatchling.build"
 
 [project]
@@ -19,10 +19,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "httpx>=0.28,<1",
+  "httpx>=0.28.1,<1",
   "Pillow>=10,<14",
-  "pytest>=8.3,<9",
-  "ruff>=0.8,<1",
+  "pytest>=9.2.0,<10",
+  "ruff>=0.17.5,<1",
 ]
 
 [tool.hatch.build.targets.wheel]
