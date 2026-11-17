@@ -140,7 +140,9 @@ make topology-up
 make topology-check
 make topology-down
 make monitoring-up
+make monitoring-live-up
 make monitoring-down
+make closed-loop-trial RUN_ID=closed-loop-001
 make terraform-fmt
 make terraform-validate
 ```
@@ -228,8 +230,9 @@ an operator-network performance claim.
 
 Alertmanager sends `NetPulseLinkAnomaly` alerts to the local FastAPI remediation webhook. The
 service accepts only the fixed OSPF link allow-list (`r1-r2`, `r1-r3`, `r2-r4`, and `r3-r4`),
-serializes decisions, applies a monotonic per-interface cooldown, and appends audit JSONL records.
-Its Prometheus endpoint exports remediation status counters and last-action latency.
+serializes decisions, applies monotonic per-interface and incident-wide cooldowns, and appends
+audit JSONL records. Its Prometheus endpoint exports remediation status counters and last-action
+latency. An alert resolution rolls back only a cost that the service previously applied.
 
 Dry-run is the default. It records the exact allow-listed `docker exec ... vtysh` command but
 never invokes Docker or changes a router. Test the webhook locally with:
@@ -246,6 +249,34 @@ Live OSPF cost changes require both `NETPULSE_DRY_RUN=false` and
 They additionally require the explicit socket-mount override, `make monitoring-live-up`. The
 normal `make monitoring-up` dry-run stack does not mount the Docker socket. Do not enable live
 mode until you have approved a controlled reroute test and a rollback/teardown plan.
+
+## Controlled closed-loop trial
+
+The closed-loop trial is separate from normal monitoring. It starts a 25 Mb/s UDP flow, biases
+the primary route to `r1-r2`, then applies a bounded `tc netem rate 1mbit` impairment to
+`r1/eth1`. OSPF remains up while transmit utilisation drops. The forecaster publishes a negative
+residual, Prometheus and Alertmanager route the alert, and remediation raises the `r1/eth1` OSPF
+cost so traffic uses `r1-r3`. When the alert resolves, the service removes only the cost it
+applied.
+
+This is the only workflow that changes temporary routing and qdisc state. It needs the explicit
+live remediation profile and a new run ID; cleanup removes the qdisc and both temporary route
+costs even after a failed check. It fails rather than claiming success if detector, alert,
+applied-action, rollback, and receiver-throughput evidence are missing.
+Restoration uses the repository's declared criterion: three consecutive receiver samples at or
+above 90% of the pre-fault throughput median.
+
+```bash
+# In ignored .env, set both flags before the explicit live profile.
+# NETPULSE_DRY_RUN=false
+# NETPULSE_ENABLE_LIVE_ACTIONS=true
+make monitoring-live-up
+make closed-loop-trial RUN_ID=closed-loop-20261118-001
+```
+
+Successful output is immutable under `runs/<RUN_ID>/`: receiver output, detector metrics,
+Prometheus alerts, remediation audit snapshots, route output, event timestamps, and hashes of
+the configuration used. Review and sanitize trial artifacts before committing them.
 
 ## Architecture
 
@@ -278,7 +309,7 @@ values—and follows this flow:
 | Monitoring | Local Prometheus, Grafana, and remediation health endpoints provide the stack checks. |
 | Live snapshot | [17 November 2026 summary](results/live-demo-20261117.md) and [JSON](results/live-demo-20261117.json) capture one controlled run, including the dry-run boundary. |
 | Experiments | Immutable run manifests and [MTTR results](results/mttr_metrics.md) hold the reproducible synthetic experiment record. |
-| Verification | **78 automated tests** run through `make test`; Ruff, Compose, Terraform, and Gitleaks run in [GitHub Actions](.github/workflows/ci.yml). |
+| Verification | **84 automated tests** run through `make test`; Ruff, Compose, Terraform, and Gitleaks run in [GitHub Actions](.github/workflows/ci.yml). |
 | Deployment | [GCP deployment reference](docs/gcp-deployment.md) covers the loopback-only VM profile without committing cloud identifiers. |
 | Demo | [docs/demo.gif](docs/demo.gif) is captured from a running local stack. |
 

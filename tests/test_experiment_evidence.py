@@ -99,12 +99,15 @@ class ExperimentEvidenceTests(unittest.TestCase):
                 raw_iperf={"start": {"timestamp": {"timesecs": 1}}, "intervals": []},
                 events={"fault_start": 2.0},
                 config_paths=[config],
+                extra_artifacts={"raw/detector.txt": "detector snapshot"},
             )
             run_dir = root / "runs" / "task10-control"
             self.assertTrue((run_dir / "raw" / "iperf-receiver.json").is_file())
             events = json.loads((run_dir / "events.json").read_text())
             self.assertEqual(events, {"fault_start": 2.0})
             self.assertEqual(manifest["configuration_hashes"].keys(), {"topology.yml"})
+            self.assertTrue((run_dir / "raw" / "detector.txt").is_file())
+            self.assertIn("raw/detector.txt", manifest["artifact_hashes"])
 
 
 if __name__ == "__main__":

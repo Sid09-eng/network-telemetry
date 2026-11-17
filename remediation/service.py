@@ -58,10 +58,16 @@ class RemediationService:
         adapter: OspfCostAdapter,
         cooldown_seconds: float,
         audit_path: Path,
+        global_cooldown_seconds: float = 0.0,
         monotonic_clock: MonotonicClock = time.monotonic,
     ) -> None:
         self.adapter = adapter
         self.policy = CooldownPolicy(cooldown_seconds=cooldown_seconds)
+        if not math.isfinite(global_cooldown_seconds) or global_cooldown_seconds < 0:
+            raise ValueError("global_cooldown_seconds must be finite and non-negative")
+        self.global_cooldown_seconds = global_cooldown_seconds
+        self._last_action_at: float | None = None
+        self._applied_targets: dict[tuple[str, str], RemediationTarget] = {}
         self.audit_path = audit_path
         self.monotonic_clock = monotonic_clock
         self._lock = threading.Lock()
@@ -91,11 +97,14 @@ class RemediationService:
     def handle(self, payload: object) -> list[dict[str, Any]]:
         """Validate an Alertmanager payload and serialize all policy/action decisions."""
         try:
-            targets = parse_alertmanager_payload(payload)
+            is_resolved = isinstance(payload, dict) and payload.get("status") == "resolved"
+            targets = parse_alertmanager_payload(payload, include_resolved=is_resolved)
         except PolicyError as error:
             self._append_rejected(error)
             raise
         with self._lock:
+            if is_resolved:
+                return [self._resolve_target(target) for target in targets]
             if not targets:
                 record = {
                     "timestamp": datetime.now(UTC).isoformat(),
@@ -115,9 +124,48 @@ class RemediationService:
             self._metrics.record(mode=self.mode, status="cooldown", latency_seconds=0.0)
             return decision
 
+        if (
+            self._last_action_at is not None
+            and now - self._last_action_at < self.global_cooldown_seconds
+        ):
+            decision = self._decision(target, status="global-cooldown", latency_seconds=0.0)
+            append_audit(self.audit_path, decision)
+            self._metrics.record(mode=self.mode, status="global-cooldown", latency_seconds=0.0)
+            return decision
+        self._last_action_at = now
+
         result = self.adapter.apply(target)
         decision = self._decision(
             target,
+            status=result.status,
+            latency_seconds=result.latency_seconds,
+            command=result.command,
+            action_output=result.action_output,
+            rollback_status=result.rollback_status,
+            rollback_output=result.rollback_output,
+        )
+        append_audit(self.audit_path, decision)
+        self._metrics.record(
+            mode=self.mode,
+            status=result.status,
+            latency_seconds=result.latency_seconds,
+        )
+        if result.status == "applied":
+            self._applied_targets[target.router, target.interface] = target
+        return decision
+
+    def _resolve_target(self, target: RemediationTarget) -> dict[str, Any]:
+        """Rollback only the cost previously applied for this resolved alert."""
+        applied = self._applied_targets.pop((target.router, target.interface), None)
+        if applied is None:
+            decision = self._decision(target, status="resolved", latency_seconds=0.0)
+            append_audit(self.audit_path, decision)
+            self._metrics.record(mode=self.mode, status="resolved", latency_seconds=0.0)
+            return decision
+
+        result = self.adapter.rollback(applied)
+        decision = self._decision(
+            applied,
             status=result.status,
             latency_seconds=result.latency_seconds,
             command=result.command,

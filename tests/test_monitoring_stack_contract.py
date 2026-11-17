@@ -56,6 +56,8 @@ class MonitoringStackContractTests(unittest.TestCase):
         self.assertIn("job_name: netpulse-remediation", prometheus)
         self.assertIn("remediation:8000", prometheus)
         self.assertIn("http://remediation:8000/alerts", alertmanager)
+        alert_rules = (ROOT / "monitoring" / "alert_rules.yml").read_text(encoding="utf-8")
+        self.assertIn("netpulse_anomaly_residual < 0", alert_rules)
         self.assertIn("NETPULSE_ENABLE_LIVE_ACTIONS", compose)
         self.assertNotIn("/var/run/docker.sock:/var/run/docker.sock", compose)
         self.assertIn("/var/run/docker.sock:/var/run/docker.sock", live_compose)

@@ -30,7 +30,9 @@ LINK_TARGETS: dict[str, tuple[str, str]] = {
 ALERT_NAME = "NetPulseLinkAnomaly"
 
 
-def parse_alertmanager_payload(payload: object) -> list[RemediationTarget]:
+def parse_alertmanager_payload(
+    payload: object, *, include_resolved: bool = False
+) -> list[RemediationTarget]:
     """Validate a firing Alertmanager webhook and map it to fixed safe targets."""
     if not isinstance(payload, dict):
         raise PolicyError("webhook payload must be an object")
@@ -47,7 +49,7 @@ def parse_alertmanager_payload(payload: object) -> list[RemediationTarget]:
     for alert in alerts:
         if not isinstance(alert, dict) or alert.get("status") not in {"firing", "resolved"}:
             raise PolicyError("each alert must include a firing or resolved status")
-        if alert["status"] == "resolved":
+        if alert["status"] == "resolved" and not include_resolved:
             continue
         labels = alert.get("labels")
         if not isinstance(labels, dict) or labels.get("alertname") != ALERT_NAME:

@@ -18,6 +18,7 @@ class Detection:
     link: str
     score: float
     active: bool
+    residual: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -109,7 +110,11 @@ def publish_detections(
         _post_json(
             detector_url=detector_url,
             path="/score",
-            payload={"link": detection.link, "score": detection.score},
+            payload={
+                "link": detection.link,
+                "score": detection.score,
+                "residual": detection.residual,
+            },
             timeout_seconds=timeout_seconds,
             opener=opener,
         )
@@ -146,11 +151,18 @@ def score_residuals(
     for timestamp, link, observed, forecast in zip(
         timestamps, links, actual, predicted, strict=True
     ):
-        score = abs(observed - forecast)
+        residual = observed - forecast
+        score = abs(residual)
         if not math.isfinite(score):
             raise ValueError("residual scores must be finite")
         detections.append(
-            Detection(timestamp=timestamp, link=link, score=score, active=score >= threshold)
+            Detection(
+                timestamp=timestamp,
+                link=link,
+                score=score,
+                active=score >= threshold,
+                residual=residual,
+            )
         )
     return detections
 

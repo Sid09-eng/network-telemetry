@@ -59,6 +59,7 @@ class InferenceWorkerTests(unittest.TestCase):
         detected = worker.poll_once()
         self.assertEqual(len(detected), 1)
         self.assertAlmostEqual(detected[0].score, 0.35)
+        self.assertAlmostEqual(detected[0].residual, -0.35)
         self.assertTrue(detected[0].active)
         self.assertEqual(len(published), 2)
 

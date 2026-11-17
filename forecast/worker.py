@@ -205,13 +205,15 @@ class InferenceWorker:
                     prediction.expected_timestamp,
                     abs_tol=self.config.poll_seconds * 0.01,
                 ):
-                    score = abs(sample.value - prediction.value)
+                    residual = sample.value - prediction.value
+                    score = abs(residual)
                     detections.append(
                         Detection(
                             timestamp=received_sample.timestamp,
                             link=sample.link,
                             score=score,
                             active=score >= self.config.threshold,
+                            residual=residual,
                         )
                     )
                 elif sample.timestamp > prediction.expected_timestamp:

@@ -3,7 +3,9 @@ groups:
     interval: 5s
     rules:
       - alert: NetPulseLinkAnomaly
-        expr: netpulse_anomaly_active > 0
+        # A utilisation increase remains visible in Grafana but does not authorize a reroute.
+        # Only an unexpected utilisation drop can request guarded remediation.
+        expr: netpulse_anomaly_active > 0 and netpulse_anomaly_residual < 0
         for: 10s
         labels:
           severity: warning

@@ -3,7 +3,7 @@ PYTHON ?= python3
 .DEFAULT_GOAL := help
 TRAFFIC_HOST_IMAGE := netpulse-traffic-host:0.1.0
 
-.PHONY: help test lint format check quickstart teardown topology-up topology-down topology-check traffic-host-image monitoring-up monitoring-live-up monitoring-down monitoring-config terraform-fmt terraform-init terraform-validate
+.PHONY: help test lint format check quickstart teardown topology-up topology-down topology-check traffic-host-image monitoring-up monitoring-live-up monitoring-down monitoring-config closed-loop-trial terraform-fmt terraform-init terraform-validate
 
 help: ## Show currently available foundation commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ {printf "%-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -49,6 +49,10 @@ monitoring-down: ## Stop monitoring services without changing the Containerlab t
 
 monitoring-config: ## Validate the Compose monitoring-stack configuration.
 	docker compose config --quiet
+
+closed-loop-trial: ## Run one explicit live detection-to-restoration trial (RUN_ID is required).
+	@test -n "$(RUN_ID)" || (echo "RUN_ID is required" >&2; exit 2)
+	$(PYTHON) -m evaluate.closed_loop --run-id "$(RUN_ID)" --apply
 
 terraform-fmt: ## Check Terraform formatting without contacting GCP.
 	terraform -chdir=infra/terraform fmt -check

@@ -50,6 +50,12 @@ claiming operator-network performance.
 - [x] **Step 14 — Continuous inference.** A Compose worker polls Prometheus utilisation every
   five seconds, builds bounded in-memory features, scores persistence residuals, and publishes
   one conservative score per physical link to the detector.
+- [x] **Step 15 — Safe closed-loop signalling.** Detector metrics retain signed residuals;
+  only unexpected utilisation drops can request remediation. A global incident cooldown prevents
+  alternate-path telemetry from producing a second action during the same event.
+- [ ] **Step 17 — Controlled closed-loop evidence.** The explicit live trial is implemented but
+  awaits an operator-approved run. One rate-limited `r1-r2` impairment must produce detector,
+  alert, applied-action, sustained-restoration, and rollback evidence in a new immutable run.
 
 ## Verification model
 
@@ -60,6 +66,7 @@ claiming operator-network performance.
 | Traffic and faults | Deterministic schedules with explicit applied/unapplied outcomes |
 | Forecasting | Time-ordered and held-out-link evaluation |
 | Continuous inference | Live Prometheus polling, cadence handling, residual scoring, and detector publication |
+| Closed loop | One opt-in rate impairment, negative-residual alert, guarded reroute, rollback, and immutable evidence |
 | Remediation | Allow-list, dry-run, cooldown, rollback, and audit contracts |
 | Recovery | Sustained-throughput restoration criterion over matched source runs |
 | Deployment | Terraform formatting and validation without cloud credentials |
