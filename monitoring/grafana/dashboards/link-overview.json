@@ -29,6 +29,62 @@
           "refId": "A"
         }
       ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "netpulse-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "id": 3,
+      "title": "Interface errors (1m)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "router_interface:errors:rate1m",
+          "legendFormat": "{{router}} {{interface}} → {{link}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "netpulse-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "id": 4,
+      "title": "Interface drops (1m)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "router_interface:drops:rate1m",
+          "legendFormat": "{{router}} {{interface}} → {{link}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "netpulse-prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "id": 5,
+      "title": "Anomaly residual",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "netpulse_anomaly_residual",
+          "legendFormat": "{{link}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "netpulse-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "id": 6,
+      "title": "Remediation actions",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (mode, status) (netpulse_remediation_actions_total)",
+          "legendFormat": "{{mode}} {{status}}",
+          "refId": "A"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,

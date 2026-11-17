@@ -169,7 +169,9 @@ the detector, the continuous forecaster, the remediation API, and the router exp
 forecaster polls the utilisation recording rule every five seconds, retains bounded in-memory
 history, uses a persistence forecast, and publishes residual scores to the detector. Containerlab remains under the
 topology lifecycle; `make monitoring-down` only removes the monitoring services. Grafana is
-provisioned from the repository and bound to `http://127.0.0.1:3000`.
+provisioned from the repository and bound to `http://127.0.0.1:3000`. The Link Overview dashboard
+shows transmit throughput and utilisation alongside interface errors, drops, anomaly residuals,
+and remediation action counters.
 
 The devcontainer is privileged and has Docker socket access so it can manage labs and containers.
 Use it only with this trusted checkout. Native network-namespace mounts are intentionally omitted
@@ -182,8 +184,9 @@ through an SSH tunnel. See the concise [GCP deployment reference](docs/gcp-deplo
 
 ## Traffic and faults
 
-The traffic generator produces a deterministic 24-bucket compressed-day UDP plan. The fault
-runner applies only allow-listed diamond-link scenarios; both default to dry-run.
+The traffic generator produces a deterministic 24-bucket compressed-day UDP plan: a smooth daily
+load shape with bounded seeded noise and one or more reproducible bursts. The fault runner applies
+only allow-listed diamond-link scenarios; both default to dry-run.
 
 ```bash
 # Print a repeatable traffic plan; add --apply only to send UDP traffic from h1 to h2.
@@ -223,8 +226,9 @@ and publishes only the final chronological fold. It therefore does not use the t
 scored to choose the threshold. Detector publishing requires at least two rolling-origin folds;
 add `--detector-dry-run` to calculate the payloads without sending HTTP requests.
 
-The committed report is source-backed by that run, but remains a short synthetic experiment—not
-an operator-network performance claim.
+The committed report is source-backed by the versioned synthetic
+[`task7-variable-traffic-20261115`](runs/task7-variable-traffic-20261115/) run and its manifest
+hash. It remains a short synthetic experiment—not an operator-network performance claim.
 
 ## Guarded remediation
 

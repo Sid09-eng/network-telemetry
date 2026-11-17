@@ -41,6 +41,10 @@ runs/*
 !runs/task10-control-short-20261115/**
 !runs/task10-remediated-short-20261115/
 !runs/task10-remediated-short-20261115/**
+!runs/task7-variable-traffic-20261115/
+runs/task7-variable-traffic-20261115/*
+!runs/task7-variable-traffic-20261115/manifest.json
+!runs/task7-variable-traffic-20261115/telemetry.jsonl
 monitoring/grafana/data/
 remediation/audit.log
 results/raw/

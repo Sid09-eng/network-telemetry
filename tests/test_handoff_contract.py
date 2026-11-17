@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import unittest
@@ -91,6 +92,22 @@ class HandoffContractTests(unittest.TestCase):
         self.assertEqual(snapshot["source_run_id"], "live-demo-20261117-verified")
         self.assertRegex(snapshot["source_manifest_sha256"], r"^[0-9a-f]{64}$")
         self.assertNotIn("172.20.", snapshot_json.read_text(encoding="utf-8"))
+
+    def test_forecast_metrics_reference_a_public_synthetic_source_run(self) -> None:
+        source_run = ROOT / "runs" / "task7-variable-traffic-20261115"
+        manifest = source_run / "manifest.json"
+        telemetry = source_run / "telemetry.jsonl"
+        report = (ROOT / "results" / "forecast_metrics.md").read_text(encoding="utf-8")
+
+        self.assertTrue(manifest.is_file())
+        self.assertTrue(telemetry.is_file())
+        self.assertGreater(telemetry.stat().st_size, 1_000)
+        self.assertNotIn("172.20.", telemetry.read_text(encoding="utf-8"))
+        published_manifest = json.loads(manifest.read_text(encoding="utf-8"))
+        self.assertEqual(published_manifest["raw_telemetry"], None)
+        self.assertEqual(published_manifest["fault_ground_truth"], None)
+        digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        self.assertIn(f"Source manifest SHA-256: `{digest}`", report)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,11 @@ source artifacts explicitly cited by `results/mttr_metrics.md`. A completed run 
 - `manifest.json`: query bounds, artifact paths, sample count, UTC creation time, and hashes of
   every configuration file used for collection.
 
+`task7-variable-traffic-20261115` is the separate public forecast source. It contains only its
+synthetic normalized telemetry and manifest; the original raw Prometheus response and fault log
+remain local. This is sufficient to reproduce `results/forecast_metrics.md` without publishing
+runtime captures.
+
 Create a run from this Docker-outside-Docker devcontainer with the Prometheus container default:
 
 ```bash

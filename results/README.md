@@ -3,6 +3,11 @@
 Published tables and plots are derived from reproducible runs. Raw telemetry stays with the
 ignored run that produced it; published experiment results identify the run ID and manifest hash.
 
+The synthetic forecast source run `runs/task7-variable-traffic-20261115/` is versioned with its
+manifest and normalized telemetry. Its manifest hash is recorded in
+[`forecast_metrics.md`](forecast_metrics.md), so the published forecast evaluation can be
+reproduced without a live Prometheus server.
+
 ## Published live acceptance snapshot
 
 [`live-demo-20261117.md`](live-demo-20261117.md) and its machine-readable companion
