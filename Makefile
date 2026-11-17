@@ -3,7 +3,7 @@ PYTHON ?= python3
 .DEFAULT_GOAL := help
 TRAFFIC_HOST_IMAGE := netpulse-traffic-host:0.1.0
 
-.PHONY: help test lint format check topology-up topology-down topology-check traffic-host-image monitoring-up monitoring-live-up monitoring-down monitoring-config terraform-fmt terraform-init terraform-validate
+.PHONY: help test lint format check quickstart teardown topology-up topology-down topology-check traffic-host-image monitoring-up monitoring-live-up monitoring-down monitoring-config terraform-fmt terraform-init terraform-validate
 
 help: ## Show currently available foundation commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ {printf "%-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -18,6 +18,13 @@ format: ## Apply Ruff formatting after development dependencies are installed.
 	$(PYTHON) -m ruff format .
 
 check: test lint ## Run available automated checks.
+
+quickstart: ## Validate, deploy, check, and monitor NetPulse on a prepared Linux host.
+	bash scripts/linux_quickstart.sh
+
+teardown: ## Stop monitoring and remove the local Containerlab topology.
+	$(MAKE) monitoring-down
+	$(MAKE) topology-down
 
 traffic-host-image: ## Build the pinned Linux host image with iperf3.
 	docker build --tag $(TRAFFIC_HOST_IMAGE) --file traffic/host.Dockerfile .

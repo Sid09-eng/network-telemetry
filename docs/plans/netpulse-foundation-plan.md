@@ -92,7 +92,7 @@ Continue NetPulse in this Linux devcontainer. Read README.md and docs/plans/netp
 
 - [x] Task 12 — add CI that installs Python dependencies, runs formatting/lint/unit tests, builds service images, validates Compose syntax, and runs `terraform fmt -check` plus `terraform validate` without cloud credentials. A separate Gitleaks job scans reachable Git history; Dependabot tracks GitHub Actions and Python dependencies. Container-image pins change only through an explicit compatibility-tested update. The first `main` workflow passed. Add Containerlab smoke testing only after it is stable in a privileged Linux runner. (files: `.github/workflows/ci.yml`, `.github/dependabot.yml`)
 
-- [ ] Task 13 — finish the reproducibility and interview handoff: one-command Linux quick start, teardown, observed demo flow, architecture diagram, limitations, security boundary, test count, results provenance, and an evidence-based 30-second GIF. (files: `README.md`, `docs/architecture.svg`, `docs/demo.gif`)
+- [x] Task 13 — finish reproducibility documentation: a Linux `make quickstart` / `make teardown` lifecycle, observed demo flow, architecture diagram, limitations, security boundary, test count, results provenance, and a 30-second GIF generated from live topology, Prometheus, and Grafana health evidence. (files: `README.md`, `docs/architecture.svg`, `docs/demo.gif`, `scripts/capture_demo_gif.py`)
 
 ## Required tests
 
