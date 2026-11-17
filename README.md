@@ -76,11 +76,21 @@ make check
 make topology-up
 make topology-check
 make monitoring-up
-for attempt in {1..30}; do
-  curl --fail --silent http://127.0.0.1:9090/-/ready && break
-  sleep 2
-done
-curl --fail --silent http://127.0.0.1:9090/-/ready
+wait_for_http() {
+  local url="$1"
+  local deadline=$((SECONDS + 60))
+  local remaining
+  while (( SECONDS < deadline )); do
+    remaining=$((deadline - SECONDS))
+    curl --fail --silent --connect-timeout 2 --max-time "$remaining" "$url" && return 0
+    if (( SECONDS < deadline )); then
+      sleep 1
+    fi
+  done
+  echo "Timed out waiting for ${url} after 60 seconds." >&2
+  return 1
+}
+wait_for_http http://127.0.0.1:9090/-/ready
 ```
 
 ## Teardown
