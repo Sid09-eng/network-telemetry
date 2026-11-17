@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import unittest
 from pathlib import Path
 
@@ -28,7 +29,7 @@ class HandoffContractTests(unittest.TestCase):
             "## Limitations",
             "## Security boundary",
             "## Evidence and provenance",
-            "72 automated tests",
+            "73 automated tests",
         ):
             self.assertIn(required, readme)
 
@@ -71,6 +72,23 @@ class HandoffContractTests(unittest.TestCase):
         self.assertEqual(module.remediation_mode({"mode": "live"}), "live")
         with self.assertRaises(ValueError):
             module.remediation_mode({"mode": "unknown"})
+
+    def test_public_live_snapshot_is_sanitized_and_traceable(self) -> None:
+        snapshot_json = ROOT / "results" / "live-demo-20261117.json"
+        snapshot_markdown = ROOT / "results" / "live-demo-20261117.md"
+
+        self.assertTrue(snapshot_json.is_file())
+        self.assertTrue(snapshot_markdown.is_file())
+        snapshot = json.loads(snapshot_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(snapshot["kind"], "NetPulse live acceptance snapshot")
+        self.assertEqual(snapshot["topology"]["ospf_adjacencies"], "Full")
+        self.assertEqual(snapshot["topology"]["r1_ecmp_paths_to_h2"], 2)
+        self.assertGreaterEqual(snapshot["monitoring"]["healthy_scrape_targets"], 6)
+        self.assertEqual(snapshot["monitoring"]["remediation_mode"], "dry-run")
+        self.assertFalse(snapshot["controlled_traffic"]["fault_injected"])
+        self.assertFalse(snapshot["controlled_traffic"]["remediation_request_submitted"])
+        self.assertNotIn("172.20.", snapshot_json.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
