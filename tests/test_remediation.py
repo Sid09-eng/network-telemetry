@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 import os
@@ -11,7 +12,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
+import httpx
 
 from remediation.actions import OspfCostAdapter
 from remediation.app import RemediationConfig, create_app
@@ -238,11 +239,17 @@ class RemediationHttpTests(unittest.TestCase):
                 cooldown_seconds=30,
                 audit_path=Path(directory) / "audit.jsonl",
             )
-            client = TestClient(create_app(service))
+            async def exercise_webhook() -> tuple[httpx.Response, httpx.Response, httpx.Response]:
+                transport = httpx.ASGITransport(app=create_app(service))
+                async with httpx.AsyncClient(
+                    transport=transport, base_url="http://netpulse-test"
+                ) as client:
+                    response = await client.post("/alerts", json=payload)
+                    metrics = await client.get("/metrics")
+                    rejected = await client.post("/alerts", json={"status": "invalid"})
+                return response, metrics, rejected
 
-            response = client.post("/alerts", json=payload)
-            metrics = client.get("/metrics")
-            rejected = client.post("/alerts", json={"status": "invalid"})
+            response, metrics, rejected = asyncio.run(exercise_webhook())
 
         self.assertEqual(response.status_code, 202)
         self.assertEqual(response.json()["decisions"][0]["status"], "dry-run")

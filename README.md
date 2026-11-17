@@ -2,11 +2,11 @@
 
 Simulated network telemetry, leakage-aware link-utilisation forecasting, anomaly detection, and guarded auto-remediation.
 
-> Status: Tasks 1–11 are implemented with source-backed local evidence and GCP live-deployment
-> acceptance. Tasks 1–12 are implemented; the first GitHub Actions CI and full-history secret scan
-> passed on `main`. GCP project identifiers, billing details, addresses, local
-> state, and operator credentials remain outside this repository. A live remediation test requires
-> explicit operator enablement.
+> Status: Tasks 1–13 are implemented with source-backed local evidence, GCP live-deployment
+> acceptance, CI, full-history secret scanning, reproducible lifecycle commands, and a captured
+> live-stack demo. GCP project identifiers, billing details, addresses, local state, and operator
+> credentials remain outside this repository. A live remediation test requires explicit operator
+> enablement.
 
 ## Scope
 
@@ -39,6 +39,60 @@ make check
 ```
 
 `NETPULSE_DRY_RUN=true` is default. Do not put GCP credentials, Terraform variables, Grafana state, fault captures, or remediation audit logs in Git.
+
+## Linux quick start
+
+Run this on a prepared **Linux** host, Linux VM, or the repository's Linux devcontainer. It needs
+Python 3.11 or 3.12, Docker with Compose v2, Containerlab, `make`, and `curl`; the command checks
+each prerequisite before making changes. It creates a local virtual environment, copies `.env`
+only when it does not already exist, then validates the code, deploys the synthetic topology,
+checks OSPF/ECMP, and starts monitoring.
+
+```bash
+git clone https://github.com/Sid09-eng/network-telemetry.git
+cd network-telemetry
+make quickstart
+```
+
+Expected final output includes `Topology healthy: all OSPF adjacencies Full; r1 has two ECMP paths
+to h2.` and `NetPulse is ready`. Open Grafana at `http://127.0.0.1:3000`; its local credentials
+come from the ignored `.env` file. On macOS, run these commands from the Linux devcontainer rather
+than the macOS host terminal.
+
+For a transparent equivalent (useful when diagnosing a prerequisite), the lifecycle command runs:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+cp .env.example .env  # only if .env does not already exist
+make check
+make topology-up
+make topology-check
+make monitoring-up
+curl --fail http://127.0.0.1:9090/-/ready
+```
+
+## Teardown
+
+Stop the local monitoring containers and remove only the local Containerlab lab:
+
+```bash
+make teardown
+```
+
+`make teardown` expands to `make monitoring-down` followed by `make topology-down`; it does not
+delete the repository, virtual environment, or GCP resources. If you deliberately provisioned the
+optional GCP VM and no longer need it, review the Terraform plan and then run this separate,
+destructive cloud cleanup command from the repository root:
+
+```bash
+terraform -chdir=infra/terraform destroy
+```
+
+That command destroys the Terraform-managed GCP VM, VPC, subnet, and firewall resources. It does
+not affect local Docker or Containerlab resources.
 
 ## Continuous integration and secret scanning
 
@@ -178,17 +232,58 @@ They additionally require the explicit socket-mount override, `make monitoring-l
 normal `make monitoring-up` dry-run stack does not mount the Docker socket. Do not enable live
 mode until you have approved a controlled reroute test and a rollback/teardown plan.
 
-## Planned architecture
+## Architecture
 
-```text
-traffic + faults -> Containerlab/FRR -> Prometheus -> Grafana
-                                      -> detector -> Alertmanager -> FastAPI remediation
-                                                                    -> audit + MTTR results
-```
+![NetPulse architecture](docs/architecture.svg)
 
-## Safety and data boundary
+The [architecture SVG](docs/architecture.svg) is self-contained and describes the synthetic
+diamond topology, telemetry path, detection path, and guarded remediation boundary.
 
-- Keep auto-remediation dry-run until controlled live reroute test.
-- Allow-list router/interface targets; record every decision in audit logs.
-- Test future-time prediction with rolling-origin splits. Report leave-one-link-out transfer separately.
-- Destroy GCP resources after demo unless explicitly retained.
+## Observed demo flow
+
+The checked-in [demo GIF](docs/demo.gif) was captured from a verified live Linux run on 16
+November 2026. It displays command output taken from the running services—not invented sample
+values—and follows this flow:
+
+1. `make topology-check` verifies four OSPF routers have Full adjacencies and `r1` has two ECMP
+   paths to `h2`.
+2. Prometheus `/-/ready` confirms the scrape server is ready; its API reports the active NetPulse
+   targets.
+3. Grafana's live `/api/health` response confirms the provisioned dashboard service and database
+   are healthy. The dashboard itself is opened locally at `http://127.0.0.1:3000`.
+4. A Prometheus query displays recorded transmit-throughput/utilisation data exported from router
+   namespaces. The flow remains dry-run: it does not inject a fault or change an OSPF cost.
+
+## Evidence and provenance
+
+| Evidence | Source and interpretation |
+| --- | --- |
+| Topology acceptance | `scripts/check_topology.py` queries the live FRR routers; the GIF records its successful OSPF/ECMP output. |
+| Monitoring evidence | Prometheus readiness, target, and recording-rule queries are fetched from the live local API. Grafana health is fetched from its live local API. |
+| Forecast/anomaly/MTTR experiments | Immutable run folders under `runs/task10-*`, their manifests/hashes, and [MTTR results](results/mttr_metrics.md) are the experiment record. They are synthetic controlled experiments, not production SLO evidence. |
+| Automated verification | **70 automated tests** are run by `make test`; `make lint` runs Ruff. The [GitHub Actions workflow](.github/workflows/ci.yml) additionally validates Compose, Terraform, and reachable Git history with Gitleaks. |
+| Deployment evidence | [GCP deployment guidance](docs/gcp-deployment.md) documents the reviewed, loopback-only deployment acceptance without committing cloud identifiers or credentials. |
+| Demo asset | [docs/demo.gif](docs/demo.gif) is generated after the live checks above; it includes the capture timestamp and direct endpoint output so its provenance can be independently inspected. |
+
+## Limitations
+
+- NetPulse models a small, synthetic FRR diamond; results do not demonstrate performance on an
+  operator network or under Internet-scale traffic.
+- Containerlab needs privileged Linux networking. Hosted CI intentionally does not run the live
+  topology smoke test; it is run from a Linux devcontainer or the GCP host.
+- The recorded experiments are finite and scenario-specific. Forecast quality, anomaly thresholds,
+  and MTTR do not generalise without new representative data and controlled validation.
+- The GIF verifies live service health and metrics endpoints. It is an evidence snapshot, not a
+  substitute for the immutable experiment artifacts or an ongoing monitoring record.
+
+## Security boundary
+
+- Remediation is dry-run by default. A live OSPF change requires both explicit environment flags
+  and the separate `make monitoring-live-up` socket-mount override.
+- Router/link actions are allow-listed, serialized, cooldown-protected, and audit logged. Exporters
+  read interface counters only; they do not execute router commands.
+- Grafana, Prometheus, Alertmanager, detector, and remediation ports bind to loopback by default.
+  The GCP design permits SSH only from the supplied administrator CIDR and attaches no VM service
+  account.
+- `.env`, Terraform state/variables, audit logs, captures, and cloud credentials are ignored. CI
+  scans reachable history with Gitleaks; protected `main` requires its CI checks before merge.
