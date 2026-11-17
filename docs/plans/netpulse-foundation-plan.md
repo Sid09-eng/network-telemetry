@@ -53,9 +53,15 @@ claiming operator-network performance.
 - [x] **Step 15 — Safe closed-loop signalling.** Detector metrics retain signed residuals;
   only unexpected utilisation drops can request remediation. A global incident cooldown prevents
   alternate-path telemetry from producing a second action during the same event.
+- [x] **Step 16 — Operational observability.** The provisioned Grafana dashboard shows link
+  throughput/utilisation, interface errors and drops, anomaly residuals, and remediation actions.
 - [ ] **Step 17 — Controlled closed-loop evidence.** The explicit live trial is implemented but
   awaits an operator-approved run. One rate-limited `r1-r2` impairment must produce detector,
   alert, applied-action, sustained-restoration, and rollback evidence in a new immutable run.
+- [x] **Step 18 — Representative traffic shape.** The seeded compressed-day generator combines a
+  smooth load shape with bounded noise and sparse reproducible bursts.
+- [x] **Step 19 — Reproducible forecast source.** The synthetic source telemetry and manifest for
+  the published forecast report are versioned and cross-checked by manifest hash.
 
 ## Verification model
 
@@ -67,6 +73,8 @@ claiming operator-network performance.
 | Forecasting | Time-ordered and held-out-link evaluation |
 | Continuous inference | Live Prometheus polling, cadence handling, residual scoring, and detector publication |
 | Closed loop | One opt-in rate impairment, negative-residual alert, guarded reroute, rollback, and immutable evidence |
+| Dashboard | Throughput, utilisation, errors, drops, residual, and remediation visualisation |
+| Forecast provenance | Published source telemetry and a manifest hash matching the report |
 | Remediation | Allow-list, dry-run, cooldown, rollback, and audit contracts |
 | Recovery | Sustained-throughput restoration criterion over matched source runs |
 | Deployment | Terraform formatting and validation without cloud credentials |

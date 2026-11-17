@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import random
 import subprocess
 import time
@@ -29,6 +30,7 @@ class TrafficEvent:
     start_offset_seconds: float
     duration_seconds: float
     rate_bps: int
+    is_burst: bool
 
 
 def build_schedule(
@@ -51,11 +53,19 @@ def build_schedule(
     bucket_count = min(BUCKETS_PER_DAY, total_seconds)
     base_duration, extra_seconds = divmod(total_seconds, bucket_count)
     random_source = random.Random(f"{scenario_id}:{seed}")
+    burst_count = max(1, round(bucket_count / 12))
+    burst_buckets = set(random_source.sample(range(bucket_count), burst_count))
     schedule: list[TrafficEvent] = []
     offset_seconds = 0
     for stream_id in range(bucket_count):
-        # Keep every generated flow at or below the operator-supplied cap.
-        rate_bps = int(target_rate_bps * random_source.uniform(0.55, 0.95))
+        # A compressed day has a repeatable low-to-high-to-low load shape. The small seeded
+        # noise component and sparse bursts make the signal less regular without exceeding cap.
+        daily_fraction = 0.55 - 0.25 * math.cos(math.tau * stream_id / bucket_count)
+        noise_fraction = random_source.uniform(-0.04, 0.04)
+        is_burst = stream_id in burst_buckets
+        burst_fraction = 0.12 if is_burst else 0.0
+        rate_fraction = min(0.95, max(0.15, daily_fraction + noise_fraction + burst_fraction))
+        rate_bps = int(target_rate_bps * rate_fraction)
         schedule.append(
             TrafficEvent(
                 scenario_id=scenario_id,
@@ -63,6 +73,7 @@ def build_schedule(
                 start_offset_seconds=float(offset_seconds),
                 duration_seconds=float(base_duration + (stream_id < extra_seconds)),
                 rate_bps=rate_bps,
+                is_burst=is_burst,
             )
         )
         offset_seconds += base_duration + (stream_id < extra_seconds)

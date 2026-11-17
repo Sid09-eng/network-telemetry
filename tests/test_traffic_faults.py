@@ -42,6 +42,18 @@ class TrafficScheduleTests(unittest.TestCase):
         self.assertTrue(all(event.rate_bps <= 25_000_000 for event in first))
         self.assertEqual(first[0].scenario_id, "diamond-failover")
 
+    def test_schedule_has_a_day_shape_with_bounded_noise_and_reproducible_bursts(self) -> None:
+        schedule = build_schedule(
+            seed=17,
+            compressed_day_seconds=120,
+            target_rate_mbps=25,
+            scenario_id="diamond-failover",
+        )
+
+        self.assertGreater(schedule[12].rate_bps, schedule[0].rate_bps)
+        self.assertGreaterEqual(sum(event.is_burst for event in schedule), 1)
+        self.assertTrue(all(0 < event.rate_bps <= 25_000_000 for event in schedule))
+
     def test_schedule_preserves_requested_whole_second_duration(self) -> None:
         schedule = build_schedule(
             seed=17,
