@@ -34,7 +34,9 @@ python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
-cp .env.example .env
+if [[ ! -f .env ]]; then
+  cp .env.example .env
+fi
 make check
 ```
 
@@ -55,9 +57,10 @@ make quickstart
 ```
 
 Expected final output includes `Topology healthy: all OSPF adjacencies Full; r1 has two ECMP paths
-to h2.` and `NetPulse is ready`. Open Grafana at `http://127.0.0.1:3000`; its local credentials
-come from the ignored `.env` file. On macOS, run these commands from the Linux devcontainer rather
-than the macOS host terminal.
+to h2.` and `NetPulse is ready`. The command waits for Prometheus readiness for up to 60 seconds
+after Compose starts. Open Grafana at `http://127.0.0.1:3000`; its local credentials come from the
+ignored `.env` file. On macOS, run these commands from the Linux devcontainer rather than the
+macOS host terminal.
 
 For a transparent equivalent (useful when diagnosing a prerequisite), the lifecycle command runs:
 
@@ -66,12 +69,18 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
-cp .env.example .env  # only if .env does not already exist
+if [[ ! -f .env ]]; then
+  cp .env.example .env
+fi
 make check
 make topology-up
 make topology-check
 make monitoring-up
-curl --fail http://127.0.0.1:9090/-/ready
+for attempt in {1..30}; do
+  curl --fail --silent http://127.0.0.1:9090/-/ready && break
+  sleep 2
+done
+curl --fail --silent http://127.0.0.1:9090/-/ready
 ```
 
 ## Teardown
@@ -252,7 +261,8 @@ values—and follows this flow:
 3. Grafana's live `/api/health` response confirms the provisioned dashboard service and database
    are healthy. The dashboard itself is opened locally at `http://127.0.0.1:3000`.
 4. A Prometheus query displays recorded transmit-throughput/utilisation data exported from router
-   namespaces. The flow remains dry-run: it does not inject a fault or change an OSPF cost.
+   namespaces. The capture reads remediation's `/healthz` endpoint and displays its reported mode;
+   it does not inject a fault, submit a remediation request, or change an OSPF cost.
 
 ## Evidence and provenance
 
@@ -261,7 +271,7 @@ values—and follows this flow:
 | Topology acceptance | `scripts/check_topology.py` queries the live FRR routers; the GIF records its successful OSPF/ECMP output. |
 | Monitoring evidence | Prometheus readiness, target, and recording-rule queries are fetched from the live local API. Grafana health is fetched from its live local API. |
 | Forecast/anomaly/MTTR experiments | Immutable run folders under `runs/task10-*`, their manifests/hashes, and [MTTR results](results/mttr_metrics.md) are the experiment record. They are synthetic controlled experiments, not production SLO evidence. |
-| Automated verification | **70 automated tests** are run by `make test`; `make lint` runs Ruff. The [GitHub Actions workflow](.github/workflows/ci.yml) additionally validates Compose, Terraform, and reachable Git history with Gitleaks. |
+| Automated verification | **72 automated tests** are run by `make test`; `make lint` runs Ruff. The [GitHub Actions workflow](.github/workflows/ci.yml) additionally validates Compose, Terraform, and reachable Git history with Gitleaks. |
 | Deployment evidence | [GCP deployment guidance](docs/gcp-deployment.md) documents the reviewed, loopback-only deployment acceptance without committing cloud identifiers or credentials. |
 | Demo asset | [docs/demo.gif](docs/demo.gif) is generated after the live checks above; it includes the capture timestamp and direct endpoint output so its provenance can be independently inspected. |
 

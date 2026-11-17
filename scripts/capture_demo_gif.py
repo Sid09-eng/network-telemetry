@@ -28,6 +28,7 @@ MUTED = "#a8b5c2"
 GREEN = "#66d18f"
 CYAN = "#63d8f2"
 PINK = "#f699c5"
+REMEDIATION_MODES = frozenset({"dry-run", "live"})
 
 
 def get_json(url: str, *, query: str | None = None) -> dict[str, Any]:
@@ -65,6 +66,14 @@ def throughput_lines(response: dict[str, Any]) -> list[str]:
     return lines
 
 
+def remediation_mode(response: dict[str, Any]) -> str:
+    """Return the explicitly reported remediation mode from its health endpoint."""
+    mode = response.get("mode")
+    if mode not in REMEDIATION_MODES:
+        raise ValueError(f"unexpected remediation mode: {mode!r}")
+    return mode
+
+
 def draw_frame(title: str, lines: list[str], *, accent: str, timestamp: str) -> Image.Image:
     """Render a readable, terminal-style evidence frame."""
     frame = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND)
@@ -87,7 +96,7 @@ def draw_frame(title: str, lines: list[str], *, accent: str, timestamp: str) -> 
         y += 10
     draw.text(
         (76, HEIGHT - 72),
-        "Source: direct local command/API output · synthetic lab · no remediation action applied",
+        "Source: direct local command/API output · synthetic lab · capture submits no remediation",
         fill=MUTED,
         font=small,
     )
@@ -107,6 +116,7 @@ def main() -> int:
     with urlopen("http://127.0.0.1:9090/-/ready", timeout=10) as response:
         prom_ready = response.read().decode().strip()
     grafana = get_json("http://127.0.0.1:3000/api/health")
+    remediation = remediation_mode(get_json("http://127.0.0.1:8000/healthz"))
     targets = get_json("http://127.0.0.1:9090/api/v1/query", query="count(up == 1)")
     throughput = get_json(
         "http://127.0.0.1:9090/api/v1/query",
@@ -152,8 +162,9 @@ def main() -> int:
             [
                 "The topology, Prometheus, and Grafana responses above came from the live local "
                 "stack.",
-                "Traffic is synthetic. Remediation remains dry-run and no router configuration "
-                "changed.",
+                f"Remediation reports mode: {remediation}. This capture submits no remediation "
+                "request.",
+                "Traffic is synthetic and this capture does not change router configuration.",
                 "Immutable control/remediated experiment artifacts live under runs/task10-*.",
             ],
             accent=PINK,
