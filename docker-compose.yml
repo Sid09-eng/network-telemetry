@@ -107,6 +107,22 @@ services:
       - control
     restart: unless-stopped
 
+  forecaster:
+    build:
+      context: .
+      dockerfile: forecast/Dockerfile
+    depends_on:
+      - prometheus
+      - detector
+    environment:
+      NETPULSE_PROMETHEUS_URL: http://prometheus:9090
+      NETPULSE_DETECTOR_URL: http://detector:8001
+      NETPULSE_INFERENCE_POLL_SECONDS: ${NETPULSE_INFERENCE_POLL_SECONDS:-5}
+      NETPULSE_ANOMALY_THRESHOLD: ${NETPULSE_ANOMALY_THRESHOLD:-0.1}
+    networks:
+      - control
+    restart: unless-stopped
+
   remediation:
     build:
       context: ./remediation

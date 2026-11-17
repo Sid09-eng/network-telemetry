@@ -19,6 +19,7 @@ class MonitoringStackContractTests(unittest.TestCase):
             "grafana:",
             "alertmanager:",
             "detector:",
+            "forecaster:",
             "remediation:",
             "exporter-r1:",
             "exporter-r2:",
