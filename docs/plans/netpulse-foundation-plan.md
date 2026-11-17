@@ -47,6 +47,9 @@ claiming operator-network performance.
   validation, and Gitleaks; Dependabot tracks reviewed dependency updates.
 - [x] **Step 13 — Reproducibility material.** The repository includes lifecycle commands,
   architecture, live demo evidence, result provenance, and operational limits.
+- [x] **Step 14 — Continuous inference.** A Compose worker polls Prometheus utilisation every
+  five seconds, builds bounded in-memory features, scores persistence residuals, and publishes
+  one conservative score per physical link to the detector.
 
 ## Verification model
 
@@ -56,6 +59,7 @@ claiming operator-network performance.
 | Telemetry | Prometheus scrape, recording-rule, and exporter contracts |
 | Traffic and faults | Deterministic schedules with explicit applied/unapplied outcomes |
 | Forecasting | Time-ordered and held-out-link evaluation |
+| Continuous inference | Live Prometheus polling, cadence handling, residual scoring, and detector publication |
 | Remediation | Allow-list, dry-run, cooldown, rollback, and audit contracts |
 | Recovery | Sustained-throughput restoration criterion over matched source runs |
 | Deployment | Terraform formatting and validation without cloud credentials |

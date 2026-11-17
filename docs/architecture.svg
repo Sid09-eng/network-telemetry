@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
   <title id="title">NetPulse synthetic network telemetry architecture</title>
-  <desc id="desc">A Containerlab FRR diamond carries traffic between two hosts. Read-only router exporters send metrics to Prometheus and Grafana. A detector sends alerts through Alertmanager to a guarded, dry-run remediation service that records an audit trail.</desc>
+  <desc id="desc">A Containerlab FRR diamond carries traffic between two hosts. Read-only router exporters send metrics to Prometheus and Grafana. A continuous forecaster publishes residual scores to the detector, which sends alerts through Alertmanager to a guarded remediation service.</desc>
   <defs>
     <style>
       .bg { fill: #f8fafc; } .title { fill: #0f172a; font: 700 30px sans-serif; }
@@ -37,7 +37,7 @@
   <text class="subtitle" x="798" y="147">Local monitoring and control plane</text>
   <rect class="service" x="812" y="185" width="165" height="76" rx="10"/><text class="label" x="894" y="216">Prometheus</text><text class="small" x="894" y="240">scrape + rules</text>
   <rect class="service" x="1040" y="185" width="154" height="76" rx="10"/><text class="label" x="1117" y="216">Grafana</text><text class="small" x="1117" y="240">loopback UI</text>
-  <rect class="service" x="812" y="326" width="165" height="76" rx="10"/><text class="label" x="894" y="357">Detector</text><text class="small" x="894" y="381">forecast + anomaly</text>
+  <rect class="service" x="812" y="326" width="165" height="76" rx="10"/><text class="label" x="894" y="357">Forecaster + detector</text><text class="small" x="894" y="381">poll + residual score</text>
   <rect class="service" x="1040" y="326" width="154" height="76" rx="10"/><text class="label" x="1117" y="357">Alertmanager</text><text class="small" x="1117" y="381">route alerts</text>
   <rect class="guard" x="902" y="442" width="200" height="70" rx="10"/><text class="label" x="1002" y="472">Remediation API</text><text class="small" x="1002" y="495">dry-run, allow-list, audit</text>
   <path class="data" d="M605 300 C700 230 740 220 812 220"/><text class="note" x="670" y="208">read-only exporters</text>

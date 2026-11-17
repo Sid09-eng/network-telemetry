@@ -163,7 +163,9 @@ make topology-down
 ## Monitoring stack
 
 After topology health passes, `make monitoring-up` starts Prometheus, Grafana, Alertmanager,
-the detector, the remediation API, and the router exporters. Containerlab remains under the
+the detector, the continuous forecaster, the remediation API, and the router exporters. The
+forecaster polls the utilisation recording rule every five seconds, retains bounded in-memory
+history, uses a persistence forecast, and publishes residual scores to the detector. Containerlab remains under the
 topology lifecycle; `make monitoring-down` only removes the monitoring services. Grafana is
 provisioned from the repository and bound to `http://127.0.0.1:3000`.
 
@@ -276,7 +278,7 @@ values—and follows this flow:
 | Monitoring | Local Prometheus, Grafana, and remediation health endpoints provide the stack checks. |
 | Live snapshot | [17 November 2026 summary](results/live-demo-20261117.md) and [JSON](results/live-demo-20261117.json) capture one controlled run, including the dry-run boundary. |
 | Experiments | Immutable run manifests and [MTTR results](results/mttr_metrics.md) hold the reproducible synthetic experiment record. |
-| Verification | **73 automated tests** run through `make test`; Ruff, Compose, Terraform, and Gitleaks run in [GitHub Actions](.github/workflows/ci.yml). |
+| Verification | **78 automated tests** run through `make test`; Ruff, Compose, Terraform, and Gitleaks run in [GitHub Actions](.github/workflows/ci.yml). |
 | Deployment | [GCP deployment reference](docs/gcp-deployment.md) covers the loopback-only VM profile without committing cloud identifiers. |
 | Demo | [docs/demo.gif](docs/demo.gif) is captured from a running local stack. |
 

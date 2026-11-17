@@ -8,7 +8,7 @@ TRAFFIC_HOST_IMAGE := netpulse-traffic-host:0.1.0
 help: ## Show currently available foundation commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ {printf "%-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-test: ## Run task-level repository tests.
+test: ## Run repository tests.
 	$(PYTHON) -m unittest discover -s tests -v
 
 lint: ## Run Ruff after development dependencies are installed.
