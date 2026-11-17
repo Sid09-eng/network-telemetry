@@ -38,6 +38,9 @@ wait_for_http() {
   local remaining
   while (( SECONDS < deadline )); do
     remaining=$((deadline - SECONDS))
+    if (( remaining <= 0 )); then
+      break
+    fi
     if curl --fail --silent --connect-timeout 2 --max-time "$remaining" "$url" >/dev/null; then
       return 0
     fi

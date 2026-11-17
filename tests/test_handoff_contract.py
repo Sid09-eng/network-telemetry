@@ -53,8 +53,10 @@ class HandoffContractTests(unittest.TestCase):
         self.assertIn("deadline=$((SECONDS + 60))", quickstart)
         self.assertIn("--connect-timeout 2", quickstart)
         self.assertIn('--max-time "$remaining"', quickstart)
+        self.assertIn("if (( remaining <= 0 )); then", quickstart)
         self.assertIn("deadline=$((SECONDS + 60))", readme)
         self.assertIn("--connect-timeout 2", readme)
+        self.assertIn("if (( remaining <= 0 )); then", readme)
 
     def test_capture_reports_a_validated_remediation_mode(self) -> None:
         specification = importlib.util.spec_from_file_location(
