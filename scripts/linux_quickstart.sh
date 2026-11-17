@@ -32,10 +32,23 @@ if [[ ! -f .env ]]; then
   cp .env.example .env
 fi
 
+wait_for_http() {
+  local url="$1"
+  local attempt
+  for attempt in {1..30}; do
+    if curl --fail --silent "$url" >/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "Timed out waiting for ${url} after 60 seconds." >&2
+  return 1
+}
+
 make check
 make topology-up
 make topology-check
 make monitoring-up
-curl --fail --silent --show-error http://127.0.0.1:9090/-/ready
+wait_for_http http://127.0.0.1:9090/-/ready
 echo
 echo "NetPulse is ready: Grafana is available at http://127.0.0.1:3000"
