@@ -1,4 +1,4 @@
-"""Task 2 topology-health tests."""
+"""Step 2 topology-health tests."""
 
 import unittest
 

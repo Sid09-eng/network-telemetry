@@ -2,30 +2,23 @@
 
 Simulated network telemetry, leakage-aware link-utilisation forecasting, anomaly detection, and guarded auto-remediation.
 
-> Status: Tasks 1–13 are implemented with source-backed local evidence, GCP live-deployment
-> acceptance, CI, full-history secret scanning, reproducible lifecycle commands, and a captured
-> live-stack demo. GCP project identifiers, billing details, addresses, local state, and operator
-> credentials remain outside this repository. A live remediation test requires explicit operator
-> enablement.
+> Status: working demonstration environment with local evidence, GCP deployment validation,
+> protected CI, and a captured live-stack demo. Cloud identifiers, local state, and credentials
+> are intentionally excluded. Live remediation remains opt-in.
 
 ## Scope
 
 NetPulse uses Containerlab and FRRouting to create a small synthetic network. It generates controlled traffic and link-failure events, observes router-interface telemetry with Prometheus and Grafana, predicts next-interval link utilisation, and routes alerts through Alertmanager to a protected remediation service.
 
-Synthetic topology and traffic are demonstration data, not operator-network data. Reported forecast, anomaly, and MTTR results will be generated from saved runs; no values are pre-claimed.
-
-## Delivery target
-
-Delivery window: 15–20 November 2026.
-
-GCP deployment is required final-stage work. Local Linux validation comes first because Containerlab needs Linux networking; Terraform then deploys the runnable system to a GCP Compute Engine Linux VM. GCP project ID, billing approval, and credentials stay outside this repository.
+The topology and traffic are synthetic. Forecast, anomaly, and recovery results are tied to their
+recorded runs; they are not claims about a production network.
 
 ## Prerequisites
 
 - Python 3.11 or 3.12 for project dependencies
 - Linux host or Linux VM for Containerlab execution
-- Docker and Docker Compose (used from Task 2 onward)
-- Terraform 1.9+ and a GCP project with an approved budget for Task 11 deployment
+- Docker with Compose v2
+- Terraform 1.9+ and a GCP project with an approved budget for optional deployment
 
 ## Foundation setup
 
@@ -130,7 +123,9 @@ Linux runner. Run the topology acceptance checks from the Linux devcontainer or 
 
 ## Telemetry contract
 
-Each FRR router has fixed management IP (`172.20.20.11`–`172.20.20.14`). Task 4 starts a small exporter sidecar in each router network namespace. Exporter reads only listed data-plane interface counters from `/sys/class/net`, exposes port `9100`, and never executes router commands.
+Each FRR router has a fixed management address. A small exporter runs in each router namespace,
+reads selected data-plane counters from `/sys/class/net`, and exposes port `9100`; it does not
+execute router commands.
 
 Prometheus scrapes raw byte, packet, error, and drop counters. [Recording rules](monitoring/recording_rules.yml) derive one-minute bits-per-second and utilisation ratios; raw counters stay raw. Default link capacity is 100 Mbps and is explicit in `NETPULSE_LINK_CAPACITY_BPS`.
 
@@ -167,28 +162,24 @@ make topology-down
 
 ## Monitoring stack
 
-After `make topology-up` and a successful `make topology-check`, run `make monitoring-up`.
-Compose starts Prometheus, Grafana, Alertmanager, detector, guarded remediation API, and one
-read-only metrics exporter in each router network namespace. Containerlab remains owned by
-the topology targets; `make monitoring-down` does not destroy it. Grafana is available only
-on `http://127.0.0.1:3000` and is declaratively provisioned with the NetPulse Prometheus
-datasource and Link Overview dashboard. Default local credentials are `admin` /
-`netpulse-local-only`; set `GRAFANA_ADMIN_PASSWORD` in `.env` before exposing the stack.
+After topology health passes, `make monitoring-up` starts Prometheus, Grafana, Alertmanager,
+the detector, the remediation API, and the router exporters. Containerlab remains under the
+topology lifecycle; `make monitoring-down` only removes the monitoring services. Grafana is
+provisioned from the repository and bound to `http://127.0.0.1:3000`.
 
-The devcontainer runs as `root`, is privileged, and mounts Docker runtime paths plus your Docker Desktop socket. Docker Desktop does not expose `/run/docker/netns`, so that native-Linux-only mount is intentionally omitted. Open this only for the trusted repository: it can control Docker Desktop containers and networks.
+The devcontainer is privileged and has Docker socket access so it can manage labs and containers.
+Use it only with this trusted checkout. Native network-namespace mounts are intentionally omitted
+when Docker Desktop does not provide them.
 
-Terraform defines a single labelled Compute Engine VM, a dedicated VPC/subnet, and an SSH firewall
-restricted to your `admin_cidr`. It has no committed project ID, credentials, local state, billing
-configuration, and explicitly attaches no VM service account. Grafana remains loopback-only and is accessed over
-an SSH tunnel. Run `make terraform-fmt` and `make terraform-validate` locally, then follow the
-reviewed [GCP deployment guide](docs/gcp-deployment.md) before any `plan` or `apply`. See the
-[foundation plan](docs/plans/netpulse-foundation-plan.md) for ordered acceptance criteria.
+Terraform defines one labelled Compute Engine VM, a dedicated network, and SSH access scoped to
+`admin_cidr`. The VM has no attached service account; Grafana stays loopback-only and is reached
+through an SSH tunnel. See the concise [GCP deployment reference](docs/gcp-deployment.md) and the
+[delivery record](docs/plans/netpulse-foundation-plan.md).
 
 ## Traffic and faults
 
-Task 5 provides a deterministic 24-bucket compressed-day UDP traffic plan and an allow-listed
-diamond-link fault scenario. Both commands are dry-run by default. The topology target builds
-the local traffic-host image with `iperf3` before deployment.
+The traffic generator produces a deterministic 24-bucket compressed-day UDP plan. The fault
+runner applies only allow-listed diamond-link scenarios; both default to dry-run.
 
 ```bash
 # Print a repeatable traffic plan; add --apply only to send UDP traffic from h1 to h2.
@@ -281,13 +272,13 @@ values—and follows this flow:
 
 | Evidence | Source and interpretation |
 | --- | --- |
-| Topology acceptance | `scripts/check_topology.py` queries the live FRR routers; the GIF records its successful OSPF/ECMP output. |
-| Monitoring evidence | Prometheus readiness, target, and recording-rule queries are fetched from the live local API. Grafana health is fetched from its live local API. |
-| Live acceptance snapshot | [17 November 2026 live snapshot](results/live-demo-20261117.md) and its [sanitized JSON data](results/live-demo-20261117.json) record the topology, service health, dry-run boundary, and selected measured throughput values from one controlled traffic run. |
-| Forecast/anomaly/MTTR experiments | Immutable run folders under `runs/task10-*`, their manifests/hashes, and [MTTR results](results/mttr_metrics.md) are the experiment record. They are synthetic controlled experiments, not production SLO evidence. |
-| Automated verification | **73 automated tests** are run by `make test`; `make lint` runs Ruff. The [GitHub Actions workflow](.github/workflows/ci.yml) additionally validates Compose, Terraform, and reachable Git history with Gitleaks. |
-| Deployment evidence | [GCP deployment guidance](docs/gcp-deployment.md) documents the reviewed, loopback-only deployment acceptance without committing cloud identifiers or credentials. |
-| Demo asset | [docs/demo.gif](docs/demo.gif) is generated after the live checks above; it includes the capture timestamp and direct endpoint output so its provenance can be independently inspected. |
+| Topology | `scripts/check_topology.py` checks live FRR OSPF and ECMP state. |
+| Monitoring | Local Prometheus, Grafana, and remediation health endpoints provide the stack checks. |
+| Live snapshot | [17 November 2026 summary](results/live-demo-20261117.md) and [JSON](results/live-demo-20261117.json) capture one controlled run, including the dry-run boundary. |
+| Experiments | Immutable run manifests and [MTTR results](results/mttr_metrics.md) hold the reproducible synthetic experiment record. |
+| Verification | **73 automated tests** run through `make test`; Ruff, Compose, Terraform, and Gitleaks run in [GitHub Actions](.github/workflows/ci.yml). |
+| Deployment | [GCP deployment reference](docs/gcp-deployment.md) covers the loopback-only VM profile without committing cloud identifiers. |
+| Demo | [docs/demo.gif](docs/demo.gif) is captured from a running local stack. |
 
 ## Limitations
 

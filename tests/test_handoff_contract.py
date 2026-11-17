@@ -1,4 +1,4 @@
-"""Offline contracts for the Task 13 reproducibility handoff."""
+"""Offline contracts for the Step 13 reproducibility handoff."""
 
 from __future__ import annotations
 

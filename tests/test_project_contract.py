@@ -1,4 +1,4 @@
-"""Task 1 repository contract tests."""
+"""Step 1 repository contract tests."""
 
 import unittest
 from pathlib import Path

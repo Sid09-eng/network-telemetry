@@ -1,4 +1,4 @@
-"""Task 7 leakage-safe features and evaluation tests."""
+"""Step 7 leakage-safe features and evaluation tests."""
 
 from __future__ import annotations
 

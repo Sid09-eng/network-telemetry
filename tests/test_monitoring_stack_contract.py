@@ -1,4 +1,4 @@
-"""Task 4 monitoring-stack configuration contracts."""
+"""Step 4 monitoring-stack configuration contracts."""
 
 from __future__ import annotations
 

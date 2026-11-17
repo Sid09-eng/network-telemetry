@@ -1,4 +1,4 @@
-"""Task 9 safety tests for Alertmanager-triggered OSPF remediation."""
+"""Step 9 safety tests for Alertmanager-triggered OSPF remediation."""
 
 from __future__ import annotations
 

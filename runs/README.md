@@ -1,6 +1,6 @@
 # Run artifacts
 
-Each `runs/<run-id>/` directory is write-once and ignored by Git, except the two sanitized Task 10
+Each `runs/<run-id>/` directory is write-once and ignored by Git, except the two sanitized Step 10
 source artifacts explicitly cited by `results/mttr_metrics.md`. A completed run contains:
 
 - `raw/prometheus-range.json`: the unmodified Prometheus API response;

@@ -1,4 +1,4 @@
-"""Task 6 telemetry collection and immutable-run tests."""
+"""Step 6 telemetry collection and immutable-run tests."""
 
 from __future__ import annotations
 

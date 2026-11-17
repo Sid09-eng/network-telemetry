@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train and evaluate Task 7 models from one immutable NetPulse run."""
+"""Train and evaluate Step 7 models from one immutable NetPulse run."""
 
 from __future__ import annotations
 

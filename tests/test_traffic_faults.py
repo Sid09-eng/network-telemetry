@@ -1,4 +1,4 @@
-"""Task 5 repeatable-traffic and fault-ground-truth tests."""
+"""Step 5 repeatable-traffic and fault-ground-truth tests."""
 
 from __future__ import annotations
 

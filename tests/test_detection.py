@@ -1,4 +1,4 @@
-"""Task 8 residual anomaly scoring and fault-matching tests."""
+"""Step 8 residual anomaly scoring and fault-matching tests."""
 
 from __future__ import annotations
 

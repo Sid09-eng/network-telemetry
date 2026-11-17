@@ -1,4 +1,4 @@
-"""Offline contracts for the Task 11 Terraform foundation."""
+"""Offline contracts for the Step 11 Terraform foundation."""
 
 from __future__ import annotations
 

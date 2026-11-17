@@ -1,4 +1,4 @@
-"""Task 10 sustained-throughput MTTR evaluation tests."""
+"""Step 10 sustained-throughput MTTR evaluation tests."""
 
 from __future__ import annotations
 

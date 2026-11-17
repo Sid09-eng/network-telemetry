@@ -1,8 +1,7 @@
 # Results
 
-Only source-backed, reproducible result tables and plots belong here. Raw telemetry remains in
-the ignored run directory that produced it; each published result must name its run ID and the
-corresponding manifest hash.
+Published tables and plots are derived from reproducible runs. Raw telemetry stays with the
+ignored run that produced it; published experiment results identify the run ID and manifest hash.
 
 ## Published live acceptance snapshot
 
