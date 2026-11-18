@@ -91,16 +91,18 @@ def create_app(service: RemediationService | None = None) -> FastAPI:
     app = FastAPI(title="NetPulse remediation", docs_url=None, redoc_url=None)
 
     @app.get("/healthz")
-    def healthz() -> dict[str, str]:
+    async def healthz() -> dict[str, str]:
         return {"status": "ok", "mode": service.mode}
 
     @app.get("/metrics")
-    def metrics() -> Response:
+    async def metrics() -> Response:
         return Response(service.metrics(), media_type="text/plain; version=0.0.4")
 
     @app.post("/alerts", status_code=202)
-    def alerts(payload: Any = Body(...)) -> dict[str, object]:
+    async def alerts(payload: Any = Body(...)) -> dict[str, object]:
         try:
+            # Decisions are intentionally serialized by RemediationService; keeping this
+            # boundary async also works with the pinned ASGI test transport.
             decisions = service.handle(payload)
         except PolicyError as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
