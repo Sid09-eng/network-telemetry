@@ -80,8 +80,8 @@ class AnomalyScoringTests(unittest.TestCase):
             payloads,
             [
                 b'{"threshold": 0.3}',
-                b'{"link": "r1-r2", "score": 0.2}',
-                b'{"link": "r1-r3", "score": 0.8}',
+                b'{"link": "r1-r2", "score": 0.2, "residual": 0.2}',
+                b'{"link": "r1-r3", "score": 0.8, "residual": 0.8}',
             ],
         )
 
@@ -146,11 +146,12 @@ class DetectorStateTests(unittest.TestCase):
 
     def test_detector_exposes_labeled_score_threshold_and_state_metrics(self) -> None:
         state = DetectorState(threshold=0.1)
-        state.update(link="r1-r2", score=0.25)
+        state.update(link="r1-r2", score=0.25, residual=-0.25)
 
         metrics = state.metrics().decode("utf-8")
 
         self.assertIn('netpulse_anomaly_score{link="r1-r2"} 0.25', metrics)
+        self.assertIn('netpulse_anomaly_residual{link="r1-r2"} -0.25', metrics)
         self.assertIn('netpulse_anomaly_threshold{link="r1-r2"} 0.1', metrics)
         self.assertIn('netpulse_anomaly_active{link="r1-r2"} 1', metrics)
         with self.assertRaises(ValueError):
@@ -192,8 +193,8 @@ class DetectorHandlerTests(unittest.TestCase):
 
         try:
             self.assertEqual(post("/threshold", b'{"threshold": 0.5}'), b'{"threshold": 0.5}')
-            post("/score", b'{"link": "r1-r2", "score": 0.6}')
-            post("/score", b'{"link": "r1-r3", "score": 0.4}')
+            post("/score", b'{"link": "r1-r2", "score": 0.6, "residual": -0.6}')
+            post("/score", b'{"link": "r1-r3", "score": 0.4, "residual": 0.4}')
             with urlopen(f"{base_url}/metrics", timeout=2.0) as response:
                 metrics = response.read().decode("utf-8")
         finally:
@@ -204,6 +205,7 @@ class DetectorHandlerTests(unittest.TestCase):
 
         self.assertIn('netpulse_anomaly_active{link="r1-r2"} 1', metrics)
         self.assertIn('netpulse_anomaly_active{link="r1-r3"} 0', metrics)
+        self.assertIn('netpulse_anomaly_residual{link="r1-r2"} -0.6', metrics)
         self.assertIn('netpulse_anomaly_threshold{link="r1-r2"} 0.5', metrics)
 
 

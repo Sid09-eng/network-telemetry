@@ -28,6 +28,7 @@ class DetectorState:
     score_updated_at: dict[str, float] = field(default_factory=dict)
     freshness_seconds: float = 15.0
     monotonic_clock: Callable[[], float] = time.monotonic
+    residuals: dict[str, float] = field(default_factory=dict)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def __post_init__(self) -> None:
@@ -36,15 +37,21 @@ class DetectorState:
         if not math.isfinite(self.freshness_seconds) or self.freshness_seconds <= 0:
             raise ValueError("freshness_seconds must be positive and finite")
 
-    def update(self, *, link: str, score: float) -> None:
-        if not LINK_PATTERN.fullmatch(link) or not math.isfinite(score) or score < 0:
-            raise ValueError("link and score must be valid")
+    def update(self, *, link: str, score: float, residual: float = 0.0) -> None:
+        if (
+            not LINK_PATTERN.fullmatch(link)
+            or not math.isfinite(score)
+            or score < 0
+            or not math.isfinite(residual)
+        ):
+            raise ValueError("link, score, and residual must be valid")
         with self.lock:
             self.link = link
             self.score = score
             self.active = score >= self.threshold
             self.scores[link] = score
             self.score_updated_at[link] = self.monotonic_clock()
+            self.residuals[link] = residual
 
     def set_threshold(self, threshold: float) -> None:
         """Update the validation-selected residual threshold for future scoring."""
@@ -58,6 +65,7 @@ class DetectorState:
         with self.lock:
             states = self.scores or {self.link: self.score}
             body = "# TYPE netpulse_anomaly_score gauge\n"
+            body += "# TYPE netpulse_anomaly_residual gauge\n"
             body += "# TYPE netpulse_anomaly_threshold gauge\n"
             body += "# TYPE netpulse_anomaly_active gauge\n"
             body += "# TYPE netpulse_anomaly_score_fresh gauge\n"
@@ -69,6 +77,7 @@ class DetectorState:
                     <= self.freshness_seconds
                 )
                 body += f"netpulse_anomaly_score{{{label}}} {score}\n"
+                body += f"netpulse_anomaly_residual{{{label}}} {self.residuals.get(link, 0.0)}\n"
                 body += f"netpulse_anomaly_threshold{{{label}}} {self.threshold}\n"
                 body += f"netpulse_anomaly_score_fresh{{{label}}} {int(fresh)}\n"
                 body += (
@@ -117,7 +126,12 @@ class Handler(BaseHTTPRequestHandler):
                 if "score" in payload
                 else abs(float(payload["actual"]) - float(payload["predicted"]))
             )
-            self.state.update(link=link, score=score)
+            residual = (
+                float(payload["residual"])
+                if "residual" in payload
+                else float(payload.get("actual", 0.0)) - float(payload.get("predicted", 0.0))
+            )
+            self.state.update(link=link, score=score, residual=residual)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             self.send_error(
                 HTTPStatus.BAD_REQUEST,
@@ -126,7 +140,12 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         self._send_json(
-            {"link": link, "score": score, "active": score >= self.state.threshold}
+            {
+                "link": link,
+                "score": score,
+                "residual": residual,
+                "active": score >= self.state.threshold,
+            }
         )
 
     def _send_json(self, payload: dict[str, float | str | bool]) -> None:

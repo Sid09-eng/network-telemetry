@@ -31,6 +31,7 @@ class RemediationConfig:
     dry_run: bool
     live_actions_enabled: bool
     cooldown_seconds: float
+    global_cooldown_seconds: float
     cost: int
     command_timeout_seconds: float
     audit_path: Path
@@ -48,6 +49,9 @@ class RemediationConfig:
             dry_run=dry_run,
             live_actions_enabled=live_actions_enabled,
             cooldown_seconds=float(os.environ.get("NETPULSE_REMEDIATION_COOLDOWN_SECONDS", "300")),
+            global_cooldown_seconds=float(
+                os.environ.get("NETPULSE_REMEDIATION_GLOBAL_COOLDOWN_SECONDS", "300")
+            ),
             cost=int(os.environ.get("NETPULSE_REMEDIATION_COST", "100")),
             command_timeout_seconds=float(
                 os.environ.get("NETPULSE_REMEDIATION_COMMAND_TIMEOUT_SECONDS", "10")
@@ -57,6 +61,10 @@ class RemediationConfig:
         if not math.isfinite(config.cooldown_seconds) or config.cooldown_seconds < 0:
             raise ValueError(
                 "NETPULSE_REMEDIATION_COOLDOWN_SECONDS must be finite and non-negative"
+            )
+        if not math.isfinite(config.global_cooldown_seconds) or config.global_cooldown_seconds < 0:
+            raise ValueError(
+                "NETPULSE_REMEDIATION_GLOBAL_COOLDOWN_SECONDS must be finite and non-negative"
             )
         if not math.isfinite(config.command_timeout_seconds) or config.command_timeout_seconds <= 0:
             raise ValueError(
@@ -76,22 +84,25 @@ def create_app(service: RemediationService | None = None) -> FastAPI:
                 timeout_seconds=config.command_timeout_seconds,
             ),
             cooldown_seconds=config.cooldown_seconds,
+            global_cooldown_seconds=config.global_cooldown_seconds,
             audit_path=config.audit_path,
         )
 
     app = FastAPI(title="NetPulse remediation", docs_url=None, redoc_url=None)
 
     @app.get("/healthz")
-    def healthz() -> dict[str, str]:
+    async def healthz() -> dict[str, str]:
         return {"status": "ok", "mode": service.mode}
 
     @app.get("/metrics")
-    def metrics() -> Response:
+    async def metrics() -> Response:
         return Response(service.metrics(), media_type="text/plain; version=0.0.4")
 
     @app.post("/alerts", status_code=202)
-    def alerts(payload: Any = Body(...)) -> dict[str, object]:
+    async def alerts(payload: Any = Body(...)) -> dict[str, object]:
         try:
+            # Decisions are intentionally serialized by RemediationService; keeping this
+            # boundary async also works with the pinned ASGI test transport.
             decisions = service.handle(payload)
         except PolicyError as error:
             raise HTTPException(status_code=400, detail=str(error)) from error

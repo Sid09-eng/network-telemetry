@@ -88,6 +88,7 @@ class RemediationConfigurationTests(unittest.TestCase):
     def test_environment_rejects_non_finite_cooldown_and_timeout(self) -> None:
         for name in (
             "NETPULSE_REMEDIATION_COOLDOWN_SECONDS",
+            "NETPULSE_REMEDIATION_GLOBAL_COOLDOWN_SECONDS",
             "NETPULSE_REMEDIATION_COMMAND_TIMEOUT_SECONDS",
         ):
             with self.subTest(name=name), patch.dict(os.environ, {name: "nan"}, clear=False):
@@ -206,6 +207,30 @@ class RemediationServiceTests(unittest.TestCase):
         self.assertEqual(decisions[0]["status"], "cooldown")
         self.assertEqual(audits[-1]["status"], "cooldown")
 
+    def test_global_cooldown_blocks_a_second_link_in_the_same_incident_window(self) -> None:
+        with TemporaryDirectory() as directory:
+            audit_path = Path(directory) / "audit.jsonl"
+            service = RemediationService(
+                adapter=OspfCostAdapter(dry_run=True),
+                cooldown_seconds=30,
+                global_cooldown_seconds=30,
+                audit_path=audit_path,
+                monotonic_clock=lambda: 100.0,
+            )
+            service.handle(self.payload)
+            second_payload = {
+                **self.payload,
+                "alerts": [
+                    {
+                        **self.payload["alerts"][0],
+                        "labels": {"alertname": "NetPulseLinkAnomaly", "link": "r1-r3"},
+                    }
+                ],
+            }
+            decisions = service.handle(second_payload)
+
+        self.assertEqual(decisions[0]["status"], "global-cooldown")
+
     def test_rejected_payload_is_audited_without_attempting_an_action(self) -> None:
         with TemporaryDirectory() as directory:
             audit_path = Path(directory) / "audit.jsonl"
@@ -219,6 +244,89 @@ class RemediationServiceTests(unittest.TestCase):
             audit = json.loads(audit_path.read_text(encoding="utf-8"))
 
         self.assertEqual(audit["status"], "rejected")
+
+    def test_resolved_alert_rolls_back_a_live_applied_cost(self) -> None:
+        commands: list[list[str]] = []
+
+        def runner(command: list[str], _timeout: float) -> subprocess.CompletedProcess[str]:
+            commands.append(command)
+            return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+        with TemporaryDirectory() as directory:
+            audit_path = Path(directory) / "audit.jsonl"
+            service = RemediationService(
+                adapter=OspfCostAdapter(dry_run=False, runner=runner),
+                cooldown_seconds=30,
+                audit_path=audit_path,
+                monotonic_clock=lambda: 100.0,
+            )
+            service.handle(self.payload)
+            resolved = {
+                **self.payload,
+                "status": "resolved",
+                "alerts": [{**self.payload["alerts"][0], "status": "resolved"}],
+            }
+            decisions = service.handle(resolved)
+            audits = [
+                json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()
+            ]
+
+        self.assertEqual(decisions[0]["status"], "rolled-back")
+        self.assertEqual(audits[-1]["status"], "rolled-back")
+        self.assertEqual(len(commands), 2)
+        self.assertIn("ip ospf cost 100", commands[0])
+        self.assertIn("no ip ospf cost", commands[1])
+
+    def test_restart_recovers_live_applied_cost_for_resolution(self) -> None:
+        commands: list[list[str]] = []
+
+        def runner(command: list[str], _timeout: float) -> subprocess.CompletedProcess[str]:
+            commands.append(command)
+            return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+        with TemporaryDirectory() as directory:
+            audit_path = Path(directory) / "audit.jsonl"
+            initial = RemediationService(
+                adapter=OspfCostAdapter(dry_run=False, runner=runner),
+                cooldown_seconds=30,
+                audit_path=audit_path,
+            )
+            initial.handle(self.payload)
+            restarted = RemediationService(
+                adapter=OspfCostAdapter(dry_run=False, runner=runner),
+                cooldown_seconds=30,
+                audit_path=audit_path,
+            )
+            resolved = {**self.payload, "status": "resolved"}
+            resolved["alerts"] = [{**self.payload["alerts"][0], "status": "resolved"}]
+            decisions = restarted.handle(resolved)
+
+        self.assertEqual(decisions[0]["status"], "rolled-back")
+        self.assertIn("no ip ospf cost", commands[-1])
+
+    def test_failed_rollback_remains_owned_for_a_resolution_retry(self) -> None:
+        attempts = [0]
+
+        def runner(command: list[str], _timeout: float) -> subprocess.CompletedProcess[str]:
+            if "no ip ospf cost" in command:
+                attempts[0] += 1
+                if attempts[0] == 1:
+                    raise subprocess.TimeoutExpired(command, timeout=1)
+            return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+        with TemporaryDirectory() as directory:
+            service = RemediationService(
+                adapter=OspfCostAdapter(dry_run=False, runner=runner),
+                cooldown_seconds=30,
+                audit_path=Path(directory) / "audit.jsonl",
+            )
+            service.handle(self.payload)
+            resolved = {**self.payload, "status": "resolved"}
+            resolved["alerts"] = [{**self.payload["alerts"][0], "status": "resolved"}]
+            self.assertEqual(service.handle(resolved)[0]["status"], "rollback-failed")
+            self.assertEqual(service.handle(resolved)[0]["status"], "rolled-back")
+
+        self.assertEqual(attempts[0], 2)
 
 
 class RemediationHttpTests(unittest.TestCase):

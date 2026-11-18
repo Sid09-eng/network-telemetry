@@ -53,6 +53,12 @@ claiming operator-network performance.
 - [x] **Step 20 — Cloud VM alerting.** Terraform scopes Cloud Monitoring policies to the managed
   Compute Engine instance for absent telemetry and sustained CPU saturation; email delivery is
   optional and must be confirmed by its recipient.
+- [x] **Step 15 — Safe closed-loop signalling.** Detector metrics retain signed residuals;
+  only unexpected utilisation drops can request remediation. A global incident cooldown prevents
+  alternate-path telemetry from producing a second action during the same event.
+- [x] **Step 17 — Controlled closed-loop evidence.** The approved live run
+  `closed-loop-20261118-live-008` produced impairment, detector, alert, applied-action,
+  sustained-restoration, rollback, and immutable manifest evidence.
 
 ## Verification model
 
@@ -64,6 +70,7 @@ claiming operator-network performance.
 | Forecasting | Time-ordered and held-out-link evaluation |
 | Continuous inference | Live Prometheus polling, cadence handling, residual scoring, and detector publication |
 | Cloud VM alerts | Terraform-managed absent-telemetry and sustained-CPU policies scoped to the instance ID |
+| Closed loop | One opt-in rate impairment, negative-residual alert, guarded reroute, rollback, and immutable evidence |
 | Remediation | Allow-list, dry-run, cooldown, rollback, and audit contracts |
 | Recovery | Sustained-throughput restoration criterion over matched source runs |
 | Deployment | Terraform formatting and validation without cloud credentials |
