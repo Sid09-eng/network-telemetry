@@ -5,7 +5,12 @@ from __future__ import annotations
 import unittest
 
 from forecast.features import Observation
-from forecast.worker import InferenceConfig, InferenceWorker, observations_from_prometheus_vector
+from forecast.worker import (
+    InferenceConfig,
+    InferenceWorker,
+    observations_from_prometheus_responses,
+    observations_from_prometheus_vector,
+)
 
 
 def observation(timestamp: float, value: float) -> Observation:
@@ -29,6 +34,51 @@ def second_endpoint_observation(timestamp: float, value: float) -> Observation:
 
 
 class InferenceWorkerTests(unittest.TestCase):
+    def test_uses_source_timestamps_and_rejects_stale_prometheus_samples(self) -> None:
+        utilisation = {
+            "status": "success",
+            "data": {
+                "resultType": "vector",
+                "result": [
+                    {
+                        "metric": {
+                            "__name__": "router_interface:transmit_utilisation_ratio:rate1m",
+                            "router": "r1",
+                            "interface": "eth1",
+                            "link": "r1-r2",
+                        },
+                        "value": ["100", "0.4"],
+                    }
+                ],
+            },
+        }
+        source_timestamp = {
+            "status": "success",
+            "data": {
+                "resultType": "vector",
+                "result": [
+                    {
+                        "metric": {"router": "r1", "interface": "eth1", "link": "r1-r2"},
+                        "value": ["100", "95"],
+                    }
+                ],
+            },
+        }
+
+        self.assertEqual(
+            observations_from_prometheus_responses(
+                utilisation, source_timestamp, max_sample_age_seconds=10
+            ),
+            [observation(95.0, 0.4)],
+        )
+        source_timestamp["data"]["result"][0]["value"][1] = "80"
+        self.assertEqual(
+            observations_from_prometheus_responses(
+                utilisation, source_timestamp, max_sample_age_seconds=10
+            ),
+            [],
+        )
+
     def test_publishes_residuals_after_warmup_and_clears_detector_state(self) -> None:
         cycles = iter([[observation(index * 5.0, 0.4)] for index in range(15)])
         published: list[object] = []
@@ -66,6 +116,28 @@ class InferenceWorkerTests(unittest.TestCase):
         cycles = iter(
             [[observation(index * 5.0, 0.4)] for index in range(13)]
             + [[observation(70.0, 0.1)]]
+        )
+        worker = InferenceWorker(
+            InferenceConfig(
+                prometheus_url="http://prometheus:9090",
+                detector_url="http://detector:8001",
+                poll_seconds=5.0,
+                threshold=0.1,
+            ),
+            collector=lambda: next(cycles),
+            configure_threshold=lambda _threshold: None,
+            publisher=lambda _detections: None,
+        )
+
+        for _ in range(13):
+            worker.poll_once()
+        self.assertEqual(worker.poll_once(), [])
+
+    def test_prediction_timestamp_rejects_epoch_sized_relative_tolerance(self) -> None:
+        epoch = 1_700_000_000.0
+        cycles = iter(
+            [[observation(epoch + index * 5.0, 0.4)] for index in range(13)]
+            + [[observation(epoch + 66.5, 0.1)]]
         )
         worker = InferenceWorker(
             InferenceConfig(

@@ -131,6 +131,19 @@ class DetectionEvaluationTests(unittest.TestCase):
 
 
 class DetectorStateTests(unittest.TestCase):
+    def test_detector_expires_an_active_score_without_fresh_telemetry(self) -> None:
+        now = [100.0]
+        state = DetectorState(
+            threshold=0.1, freshness_seconds=15.0, monotonic_clock=lambda: now[0]
+        )
+        state.update(link="r1-r2", score=0.25)
+        now[0] += 16.0
+
+        metrics = state.metrics().decode("utf-8")
+
+        self.assertIn('netpulse_anomaly_score_fresh{link="r1-r2"} 0', metrics)
+        self.assertIn('netpulse_anomaly_active{link="r1-r2"} 0', metrics)
+
     def test_detector_exposes_labeled_score_threshold_and_state_metrics(self) -> None:
         state = DetectorState(threshold=0.1)
         state.update(link="r1-r2", score=0.25)
