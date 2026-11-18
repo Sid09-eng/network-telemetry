@@ -320,6 +320,7 @@ values—and follows this flow:
 | Topology | `scripts/check_topology.py` checks live FRR OSPF and ECMP state. |
 | Monitoring | Local Prometheus, Grafana, and remediation health endpoints provide the stack checks. |
 | Live snapshot | [17 November 2026 summary](results/live-demo-20261117.md) and [JSON](results/live-demo-20261117.json) capture one controlled run, including the dry-run boundary. |
+| Closed-loop acceptance | [18 November 2026 summary](results/closed-loop-live-20261118.md) records a controlled impairment, guarded remediation, restoration, rollback, and the source manifest fingerprint. |
 | Experiments | Immutable run manifests and [MTTR results](results/mttr_metrics.md) hold the reproducible synthetic experiment record. |
 | Verification | **95 automated tests** run through `make test`; Ruff, Compose, Terraform, and Gitleaks run in [GitHub Actions](.github/workflows/ci.yml). |
 | Deployment | [GCP deployment reference](docs/gcp-deployment.md) covers the loopback-only VM profile without committing cloud identifiers. |
