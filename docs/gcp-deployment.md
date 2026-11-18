@@ -13,6 +13,9 @@ zone, and a `/32` administrator CIDR. Keep that file, Terraform state, plans, an
 of Git. Enable Compute Engine and set a project budget before applying; a budget sends alerts but
 does not stop resources automatically.
 
+Authenticate the local Terraform client with `gcloud auth login` and
+`gcloud auth application-default login` before planning. The VM itself uses no service account.
+
 `alert_notification_email` is optional. When set, Terraform creates an email notification channel;
 the recipient must confirm Google's verification email before it receives policy notifications.
 Leaving it `null` retains alert incidents in Cloud Monitoring without sending email. These are VM
@@ -40,6 +43,9 @@ Clone the repository to `/opt/netpulse/app` after the VM is available:
 ```bash
 git clone https://github.com/Sid09-eng/network-telemetry.git /opt/netpulse/app
 cd /opt/netpulse/app
+sudo make topology-up
+sudo make topology-check
+sudo make monitoring-up
 ```
 
 Access Grafana through the generated SSH tunnel at `http://127.0.0.1:3000`:
