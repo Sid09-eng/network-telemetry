@@ -39,7 +39,10 @@ class ClosedLoopConfig:
     impairment_rate: str = "1mbit"
     poll_seconds: float = 2.0
     command_timeout_seconds: float = 20.0
-    detection_threshold_max: float = 0.01
+    # The baseline flow has a small forecaster warm-up residual (~0.023 in
+    # the reference topology).  This remains far below the 25 Mb/s-to-1 Mb/s
+    # impairment signal while avoiding an action before the fault is applied.
+    detection_threshold_max: float = 0.05
     prometheus_url: str = "http://127.0.0.1:9090"
     detector_url: str = "http://127.0.0.1:8001"
     remediation_url: str = "http://127.0.0.1:8000"
