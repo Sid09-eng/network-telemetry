@@ -440,6 +440,14 @@ def run_closed_loop_trial(
             ]
         )
         sleeper(config.baseline_seconds)
+        pre_fault_audit_text, pre_fault_audits = _audit_records(
+            runner, timeout_seconds=config.command_timeout_seconds
+        )
+        if _matching_audit(pre_fault_audits[audit_boundary:], "applied"):
+            raise ValueError(
+                "remediation acted before fault injection; wait for alert state to settle"
+            )
+        raw["raw/remediation-audit-before-fault.jsonl"] = pre_fault_audit_text
         events["fault_start"] = clock()
         command(commands["impair"][0])  # type: ignore[index]
 

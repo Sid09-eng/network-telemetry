@@ -74,6 +74,57 @@ class ClosedLoopTrialTests(unittest.TestCase):
                     runner=lambda *_args, **_kwargs: self.fail("no command should run"),
                 )
 
+    def test_rejects_an_action_that_arrives_before_the_fault(self) -> None:
+        now = [0.0]
+        audit_calls = [0]
+        commands: list[list[str]] = []
+
+        def runner(command: list[str], **_kwargs: object) -> object:
+            import json
+            import subprocess
+
+            commands.append(command)
+            stdout = ""
+            if command[:4] == ["docker", "compose", "exec", "-T"]:
+                audit_calls[0] += 1
+                records = []
+                if audit_calls[0] == 2:
+                    records = [
+                        {
+                            "status": "applied",
+                            "timestamp": "2026-11-18T00:00:00+00:00",
+                            "target": {"link": "r1-r2"},
+                        }
+                    ]
+                stdout = "".join(json.dumps(record) + "\n" for record in records)
+            elif command[-1:] == ["show ip route 10.0.4.0/24 json"]:
+                stdout = '{"10.0.4.0/24":[{"nexthops":[{"interfaceName":"eth1"}]}]}'
+            return subprocess.CompletedProcess(command, 0, stdout=stdout, stderr="")
+
+        config = ClosedLoopConfig(
+            run_id="closed-loop-pre-fault-action",
+            baseline_seconds=1,
+            detection_timeout_seconds=1,
+            rollback_timeout_seconds=1,
+            post_action_seconds=1,
+        )
+        metrics = 'netpulse_anomaly_threshold{link="unknown"} 0.01\n'
+        with (
+            TemporaryDirectory() as directory,
+            patch("evaluate.closed_loop._get_json", return_value={"status": "ok", "mode": "live"}),
+            patch("evaluate.closed_loop._get_text", return_value=metrics),
+            self.assertRaisesRegex(ValueError, "before fault injection"),
+        ):
+            run_closed_loop_trial(
+                config=config,
+                runs_root=Path(directory),
+                runner=runner,
+                clock=lambda: now[0],
+                sleeper=lambda seconds: now.__setitem__(0, now[0] + seconds),
+            )
+
+        self.assertFalse(any("netem" in command and "replace" in command for command in commands))
+
     def test_publishes_evidence_only_after_detection_action_rollback_and_restoration(self) -> None:
         now = [0.0]
         audit_calls = [0]
@@ -102,7 +153,7 @@ class ClosedLoopTrialTests(unittest.TestCase):
             if command[:4] == ["docker", "compose", "exec", "-T"]:
                 audit_calls[0] += 1
                 records = []
-                if audit_calls[0] > 1:
+                if audit_calls[0] > 2:
                     records.append(
                         {
                             "status": "applied",
@@ -110,7 +161,7 @@ class ClosedLoopTrialTests(unittest.TestCase):
                             "target": {"link": "r1-r2"},
                         }
                     )
-                if audit_calls[0] > 2:
+                if audit_calls[0] > 3:
                     records.append(
                         {
                             "status": "rolled-back",
