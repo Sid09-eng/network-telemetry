@@ -30,7 +30,7 @@ class HandoffContractTests(unittest.TestCase):
             "## Limitations",
             "## Security boundary",
             "## Evidence and provenance",
-            "93 automated tests",
+            "95 automated tests",
         ):
             self.assertIn(required, readme)
 
