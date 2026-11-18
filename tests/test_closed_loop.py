@@ -42,7 +42,7 @@ class ClosedLoopTrialTests(unittest.TestCase):
             commands["impair"],
         )
         self.assertIn("no ip ospf cost", commands["cleanup"][1])
-        self.assertIn("interface eth2", commands["route_bias"])
+        self.assertIn("ip ospf cost 20", commands["route_bias"])
 
     def test_rejects_unsafe_run_ids_and_short_observation_windows(self) -> None:
         with self.assertRaisesRegex(ValueError, "run_id"):
@@ -77,6 +77,7 @@ class ClosedLoopTrialTests(unittest.TestCase):
     def test_publishes_evidence_only_after_detection_action_rollback_and_restoration(self) -> None:
         now = [0.0]
         audit_calls = [0]
+        route_calls = [0]
         commands: list[list[str]] = []
         receiver = {
             "start": {"timestamp": {"timesecs": 0}},
@@ -123,7 +124,11 @@ class ClosedLoopTrialTests(unittest.TestCase):
             elif command[:4] == ["docker", "exec", "clab-netpulse-h2", "cat"]:
                 stdout = json.dumps(receiver)
             elif command[-1:] == ["show ip route 10.0.4.0/24 json"]:
-                stdout = '{"10.0.4.0/24":[{"nexthops":[{"interfaceName":"eth2"}]}]}'
+                route_calls[0] += 1
+                interface = "eth1" if route_calls[0] == 1 else "eth2"
+                stdout = json.dumps(
+                    {"10.0.4.0/24": [{"nexthops": [{"interfaceName": interface}]}]}
+                )
             return subprocess.CompletedProcess(command, 0, stdout=stdout, stderr="")
 
         health = {"status": "ok", "mode": "live"}

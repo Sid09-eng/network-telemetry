@@ -103,7 +103,7 @@ def trial_commands(config: ClosedLoopConfig) -> dict[str, list[list[str]] | list
             "-c",
             f"interface {ALTERNATE_INTERFACE}",
             "-c",
-            "ip ospf cost 10",
+            "ip ospf cost 20",
             "-c",
             "end",
             "-c",
@@ -309,6 +309,25 @@ def _route_uses_alternate_path(payload: object) -> bool:
     return False
 
 
+def _route_uses_primary_path(payload: object) -> bool:
+    """Accept a route only when the initial traffic path is r1-r2, not ECMP."""
+    interfaces: set[str] = set()
+
+    def collect(value: object) -> None:
+        if isinstance(value, Mapping):
+            interface = value.get("interfaceName")
+            if isinstance(interface, str):
+                interfaces.add(interface)
+            for child in value.values():
+                collect(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect(child)
+
+    collect(payload)
+    return PRIMARY_INTERFACE in interfaces and ALTERNATE_INTERFACE not in interfaces
+
+
 def run_closed_loop_trial(
     *,
     config: ClosedLoopConfig,
@@ -368,6 +387,29 @@ def run_closed_loop_trial(
 
     try:
         command(commands["route_bias"])  # type: ignore[arg-type]
+
+        def primary_route() -> str | None:
+            route = command(
+                [
+                    "docker",
+                    "exec",
+                    "clab-netpulse-r1",
+                    "vtysh",
+                    "-c",
+                    "show ip route 10.0.4.0/24 json",
+                ],
+                output=True,
+            )
+            return route if _route_uses_primary_path(json.loads(route)) else None
+
+        raw["raw/r1-route-before-fault.json"] = _wait_for(
+            primary_route,
+            timeout_seconds=config.post_action_seconds,
+            interval_seconds=config.poll_seconds,
+            clock=clock,
+            sleeper=sleeper,
+        )
+        events["primary_path_observed"] = clock()
         server_command = (
             f"pkill -x iperf3 || true; iperf3 --server --one-off --json "
             f"> /tmp/{config.run_id}-server.json 2>&1 &"

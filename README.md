@@ -252,8 +252,8 @@ mode until you have approved a controlled reroute test and a rollback/teardown p
 
 ## Controlled closed-loop trial
 
-The closed-loop trial is separate from normal monitoring. It starts a 25 Mb/s UDP flow, biases
-the primary route to `r1-r2`, then applies a bounded `tc netem rate 1mbit` impairment to
+The closed-loop trial is separate from normal monitoring. It raises the `r1-r3` OSPF cost to 20
+to force a 25 Mb/s UDP flow onto `r1-r2`, then applies a bounded `tc netem rate 1mbit` impairment to
 `r1/eth1`. OSPF remains up while transmit utilisation drops. The forecaster publishes a negative
 residual, Prometheus and Alertmanager route the alert, and remediation raises the `r1/eth1` OSPF
 cost so traffic uses `r1-r3`. When the alert resolves, the service removes only the cost it
