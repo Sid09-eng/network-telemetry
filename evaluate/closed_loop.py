@@ -275,10 +275,16 @@ def _audit_snapshot(
 
 
 def _detector_threshold(metrics: str) -> float | None:
-    match = re.search(
-        rf'netpulse_anomaly_threshold\{{link="{LINK}"\}} ([0-9.eE+-]+)$', metrics, re.M
-    )
-    return float(match.group(1)) if match else None
+    # The detector holds the configured threshold under ``unknown`` until the
+    # first per-link residual is published.  During baseline warm-up that
+    # global value is the only truthful preflight source for r1-r2.
+    for link in (LINK, "unknown"):
+        match = re.search(
+            rf'netpulse_anomaly_threshold\{{link="{link}"\}} ([0-9.eE+-]+)$', metrics, re.M
+        )
+        if match:
+            return float(match.group(1))
+    return None
 
 
 def require_trial_detection_profile(metrics: str, config: ClosedLoopConfig) -> None:

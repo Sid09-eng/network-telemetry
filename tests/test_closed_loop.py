@@ -59,6 +59,9 @@ class ClosedLoopTrialTests(unittest.TestCase):
         require_trial_detection_profile(
             'netpulse_anomaly_threshold{link="r1-r2"} 0.01\n', config
         )
+        require_trial_detection_profile(
+            'netpulse_anomaly_threshold{link="unknown"} 0.01\n', config
+        )
 
     def test_rejects_existing_run_before_contacting_live_services(self) -> None:
         with TemporaryDirectory() as directory:
