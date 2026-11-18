@@ -1,0 +1,21 @@
+{
+  "configuration_hashes": {
+    "diamond-failover.yaml": "af4f59feb43e2e5acb4e206427a347d20cd0f0f17b6afa370d70f7cd6947aa05",
+    "prometheus.yml": "eb0ff637b4910b9e3169af96ac617a070aaaee210c00b7e1dd8edf3c87df25cb",
+    "recording_rules.yml": "6a687560103deabed8ad5e9e97c9679df6bbcfbb78c3414e75908957620de277"
+  },
+  "created_at": "2026-11-15T08:13:06.067059+00:00",
+  "fault_ground_truth": null,
+  "normalized_telemetry": "telemetry.jsonl",
+  "query": {
+    "end": 1794730372.0,
+    "query": "router_interface:transmit_bits:rate1m",
+    "start": 1794730072.0,
+    "step": 5.0
+  },
+  "publication_scope": "sanitized normalized telemetry and manifest only",
+  "raw_telemetry": null,
+  "run_id": "task7-variable-traffic-20261115",
+  "sample_count": 610,
+  "schema_version": 1
+}

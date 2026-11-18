@@ -68,6 +68,15 @@ class MonitoringStackContractTests(unittest.TestCase):
         self.assertEqual(dashboard["uid"], "netpulse-link-overview")
         self.assertEqual(dashboard["title"], "NetPulse Link Overview")
 
+        panels = {panel["title"]: panel["targets"][0]["expr"] for panel in dashboard["panels"]}
+        self.assertEqual(panels["Interface errors (1m)"], "router_interface:errors:rate1m")
+        self.assertEqual(panels["Interface drops (1m)"], "router_interface:drops:rate1m")
+        self.assertEqual(panels["Anomaly residual"], "netpulse_anomaly_residual")
+        self.assertEqual(
+            panels["Remediation actions"],
+            "sum by (mode, status) (netpulse_remediation_actions_total)",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -59,6 +59,12 @@ claiming operator-network performance.
 - [x] **Step 17 — Controlled closed-loop evidence.** The approved live run
   `closed-loop-20261118-live-008` produced impairment, detector, alert, applied-action,
   sustained-restoration, rollback, and immutable manifest evidence.
+- [x] **Step 16 — Operational observability.** The provisioned Grafana dashboard shows link
+  throughput/utilisation, interface errors and drops, anomaly residuals, and remediation actions.
+- [x] **Step 18 — Representative traffic shape.** The seeded compressed-day generator combines a
+  smooth load shape with bounded noise and sparse reproducible bursts.
+- [x] **Step 19 — Reproducible forecast source.** The synthetic source telemetry and manifest for
+  the published forecast report are versioned and cross-checked by manifest hash.
 
 ## Verification model
 
@@ -71,6 +77,8 @@ claiming operator-network performance.
 | Continuous inference | Live Prometheus polling, cadence handling, residual scoring, and detector publication |
 | Cloud VM alerts | Terraform-managed absent-telemetry and sustained-CPU policies scoped to the instance ID |
 | Closed loop | One opt-in rate impairment, negative-residual alert, guarded reroute, rollback, and immutable evidence |
+| Dashboard | Throughput, utilisation, errors, drops, residual, and remediation visualisation |
+| Forecast provenance | Published source telemetry and a manifest hash matching the report |
 | Remediation | Allow-list, dry-run, cooldown, rollback, and audit contracts |
 | Recovery | Sustained-throughput restoration criterion over matched source runs |
 | Deployment | Terraform formatting and validation without cloud credentials |
