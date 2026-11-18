@@ -47,6 +47,11 @@ class TerraformContractTests(unittest.TestCase):
         self.assertIn("/opt/netpulse/app", startup)
         self.assertIn("terraform destroy", deployment)
         self.assertIn("budget", deployment.lower())
+        self.assertIn("gcloud auth application-default login", deployment)
+        self.assertIn("gcloud auth login", deployment)
+        self.assertIn("sudo make topology-up", deployment)
+        self.assertIn("sudo make topology-check", deployment)
+        self.assertIn("sudo make monitoring-up", deployment)
 
     def test_makefile_exposes_offline_format_and_validation_targets(self) -> None:
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")

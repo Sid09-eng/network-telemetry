@@ -7,6 +7,8 @@ import math
 import os
 import re
 import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,11 +25,16 @@ class DetectorState:
     active: bool = False
     link: str = "unknown"
     scores: dict[str, float] = field(default_factory=dict)
+    score_updated_at: dict[str, float] = field(default_factory=dict)
+    freshness_seconds: float = 15.0
+    monotonic_clock: Callable[[], float] = time.monotonic
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def __post_init__(self) -> None:
         if not math.isfinite(self.threshold) or self.threshold < 0:
             raise ValueError("threshold must be non-negative and finite")
+        if not math.isfinite(self.freshness_seconds) or self.freshness_seconds <= 0:
+            raise ValueError("freshness_seconds must be positive and finite")
 
     def update(self, *, link: str, score: float) -> None:
         if not LINK_PATTERN.fullmatch(link) or not math.isfinite(score) or score < 0:
@@ -37,6 +44,7 @@ class DetectorState:
             self.score = score
             self.active = score >= self.threshold
             self.scores[link] = score
+            self.score_updated_at[link] = self.monotonic_clock()
 
     def set_threshold(self, threshold: float) -> None:
         """Update the validation-selected residual threshold for future scoring."""
@@ -52,16 +60,29 @@ class DetectorState:
             body = "# TYPE netpulse_anomaly_score gauge\n"
             body += "# TYPE netpulse_anomaly_threshold gauge\n"
             body += "# TYPE netpulse_anomaly_active gauge\n"
+            body += "# TYPE netpulse_anomaly_score_fresh gauge\n"
+            now = self.monotonic_clock()
             for link, score in sorted(states.items()):
                 label = f'link="{link}"'
+                fresh = (
+                    now - self.score_updated_at.get(link, float("-inf"))
+                    <= self.freshness_seconds
+                )
                 body += f"netpulse_anomaly_score{{{label}}} {score}\n"
                 body += f"netpulse_anomaly_threshold{{{label}}} {self.threshold}\n"
-                body += f"netpulse_anomaly_active{{{label}}} {int(score >= self.threshold)}\n"
+                body += f"netpulse_anomaly_score_fresh{{{label}}} {int(fresh)}\n"
+                body += (
+                    f"netpulse_anomaly_active{{{label}}} "
+                    f"{int(fresh and score >= self.threshold)}\n"
+                )
         return body.encode("utf-8")
 
 
 class Handler(BaseHTTPRequestHandler):
-    state = DetectorState(threshold=float(os.environ.get("NETPULSE_ANOMALY_THRESHOLD", "0.1")))
+    state = DetectorState(
+        threshold=float(os.environ.get("NETPULSE_ANOMALY_THRESHOLD", "0.1")),
+        freshness_seconds=float(os.environ.get("NETPULSE_ANOMALY_FRESHNESS_SECONDS", "15")),
+    )
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/healthz":

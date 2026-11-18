@@ -29,7 +29,7 @@ class HandoffContractTests(unittest.TestCase):
             "## Limitations",
             "## Security boundary",
             "## Evidence and provenance",
-            "78 automated tests",
+            "81 automated tests",
         ):
             self.assertIn(required, readme)
 
@@ -88,6 +88,8 @@ class HandoffContractTests(unittest.TestCase):
         self.assertEqual(snapshot["monitoring"]["remediation_mode"], "dry-run")
         self.assertFalse(snapshot["controlled_traffic"]["fault_injected"])
         self.assertFalse(snapshot["controlled_traffic"]["remediation_request_submitted"])
+        self.assertEqual(snapshot["source_run_id"], "live-demo-20261117-verified")
+        self.assertRegex(snapshot["source_manifest_sha256"], r"^[0-9a-f]{64}$")
         self.assertNotIn("172.20.", snapshot_json.read_text(encoding="utf-8"))
 
 

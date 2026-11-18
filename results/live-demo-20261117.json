@@ -1,8 +1,10 @@
 {
   "schema_version": 1,
   "kind": "NetPulse live acceptance snapshot",
-  "captured_at_utc": "2026-11-17T09:38:28Z",
-  "source_commit": "1c238db3c4973169d66b8ea4bcc92433536de255",
+  "captured_at_utc": "2026-11-17T18:50:32Z",
+  "source_commit": "1c28d2a0b41bea220018fe411ea3340e7dad744e",
+  "source_run_id": "live-demo-20261117-verified",
+  "source_manifest_sha256": "83f447e0b69cc6613302e8284f6936e4f99f50e93aa2e9e30677fad3f82e768e",
   "environment": {
     "containerlab_version": "0.83.0",
     "docker_client_version": "26.1.5-1",
@@ -22,37 +24,37 @@
     "healthy_scrape_targets": 6
   },
   "controlled_traffic": {
-    "scenario_id": "public-live-demo-20261117",
-    "seed": 29,
-    "duration_seconds": 30,
-    "target_rate_mbps": 25,
+    "scenario_id": "read-only-acceptance-capture",
+    "seed": null,
+    "duration_seconds": 0,
+    "target_rate_mbps": 0,
     "fault_injected": false,
     "remediation_request_submitted": false
   },
   "top_transmit_rate_mbps": [
     {
-      "router": "r4",
-      "interface": "eth3",
-      "link": "r4-h2",
-      "value_mbps": 3.493423
+      "router": "r1",
+      "interface": "eth2",
+      "link": "r1-r3",
+      "value_mbps": 0.000072
     },
     {
       "router": "r1",
       "interface": "eth1",
       "link": "r1-r2",
-      "value_mbps": 2.850048
+      "value_mbps": 0.000072
     },
     {
-      "router": "r2",
+      "router": "r4",
       "interface": "eth2",
-      "link": "r2-r4",
-      "value_mbps": 2.03535
+      "link": "r3-r4",
+      "value_mbps": 0.00006
     }
   ],
   "provenance": {
     "topology_check": "make topology-check",
     "monitoring_readiness": "curl --fail --silent http://127.0.0.1:9090/-/ready",
     "throughput_query": "topk(4, router_interface:transmit_bits:rate1m)",
-    "scope": "A point-in-time synthetic acceptance snapshot. Raw telemetry and runtime logs are intentionally not committed."
+    "scope": "A point-in-time read-only synthetic acceptance snapshot. Raw telemetry and runtime logs are retained locally in the source run and intentionally not committed."
   }
 }

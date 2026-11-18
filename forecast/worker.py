@@ -72,24 +72,92 @@ def observations_from_prometheus_vector(response: Any) -> list[Observation]:
     return observations
 
 
+def observations_from_prometheus_responses(
+    utilisation_response: Any,
+    source_timestamp_response: Any,
+    *,
+    max_sample_age_seconds: float,
+) -> list[Observation]:
+    """Join utilisation with Prometheus source timestamps and discard stale samples."""
+    if not math.isfinite(max_sample_age_seconds) or max_sample_age_seconds <= 0:
+        raise ValueError("max_sample_age_seconds must be finite and positive")
+    utilisation = observations_from_prometheus_vector(utilisation_response)
+    if (
+        not isinstance(source_timestamp_response, Mapping)
+        or source_timestamp_response.get("status") != "success"
+    ):
+        raise ValueError("Prometheus source timestamp response status must be success")
+    data = source_timestamp_response.get("data")
+    if not isinstance(data, Mapping) or data.get("resultType") != "vector":
+        raise ValueError("Prometheus source timestamp response must contain a vector result")
+    result = data.get("result")
+    if not isinstance(result, list):
+        raise ValueError("Prometheus source timestamp vector result must be a list")
+
+    source_timestamps: dict[tuple[str, str, str], float] = {}
+    for index, series in enumerate(result):
+        if not isinstance(series, Mapping):
+            raise ValueError(f"source timestamp series {index} must be an object")
+        labels = series.get("metric")
+        value = series.get("value")
+        if not isinstance(labels, Mapping) or not isinstance(value, list) or len(value) != 2:
+            raise ValueError(f"source timestamp series {index} is malformed")
+        key = tuple(labels.get(label) for label in ("router", "interface", "link"))
+        if not all(isinstance(label, str) and label for label in key):
+            raise ValueError(f"source timestamp series {index} is missing required labels")
+        if key in source_timestamps:
+            raise ValueError("source timestamp response contains duplicate link samples")
+        source_timestamps[key] = _finite(value[1], "source timestamp")
+
+    observations: list[Observation] = []
+    for sample in utilisation:
+        key = (sample.router, sample.interface, sample.link)
+        source_timestamp = source_timestamps.get(key)
+        if source_timestamp is None:
+            raise ValueError("utilisation sample has no corresponding source timestamp")
+        # The instant-vector timestamp is query evaluation time; timestamp(query) supplies the
+        # stored sample time.  Never warm history from a paused recording rule's lookback value.
+        if sample.timestamp - source_timestamp > max_sample_age_seconds:
+            continue
+        if source_timestamp > sample.timestamp:
+            raise ValueError("source timestamp cannot be later than query evaluation time")
+        observations.append(
+            Observation(
+                timestamp=source_timestamp,
+                router=sample.router,
+                interface=sample.interface,
+                link=sample.link,
+                value=sample.value,
+            )
+        )
+    return observations
+
+
 def collect_prometheus_vector(
     prometheus_url: str,
     query: str = DEFAULT_QUERY,
     *,
     timeout_seconds: float = 5.0,
+    max_sample_age_seconds: float = 15.0,
 ) -> list[Observation]:
-    """Fetch the current utilisation vector from Prometheus."""
+    """Fetch current utilisation with its stored source sample timestamps."""
     if not prometheus_url.startswith(("http://", "https://")):
         raise ValueError("prometheus_url must start with http:// or https://")
     if not query.strip():
         raise ValueError("query must be non-empty")
     if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be finite and positive")
-    parameters = urlencode({"query": query})
-    request = Request(f"{prometheus_url.rstrip('/')}/api/v1/query?{parameters}")
-    with urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
-        payload = json.loads(response.read().decode("utf-8"))
-    return observations_from_prometheus_vector(payload)
+    def fetch(query_expression: str) -> Any:
+        parameters = urlencode({"query": query_expression})
+        request = Request(f"{prometheus_url.rstrip('/')}/api/v1/query?{parameters}")
+        with urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            return json.loads(response.read().decode("utf-8"))
+
+    return observations_from_prometheus_responses(
+        fetch(query),
+        fetch(f"timestamp({query})"),
+        max_sample_age_seconds=max_sample_age_seconds,
+    )
 
 
 @dataclass(frozen=True)
@@ -101,12 +169,15 @@ class InferenceConfig:
     poll_seconds: float
     threshold: float
     query: str = DEFAULT_QUERY
+    max_sample_age_seconds: float = 15.0
 
     def __post_init__(self) -> None:
         if not math.isfinite(self.poll_seconds) or self.poll_seconds <= 0:
             raise ValueError("poll_seconds must be finite and positive")
         if not math.isfinite(self.threshold) or self.threshold < 0:
             raise ValueError("threshold must be finite and non-negative")
+        if not math.isfinite(self.max_sample_age_seconds) or self.max_sample_age_seconds <= 0:
+            raise ValueError("max_sample_age_seconds must be finite and positive")
 
     @classmethod
     def from_env(cls) -> InferenceConfig:
@@ -116,6 +187,9 @@ class InferenceConfig:
             poll_seconds=float(os.environ.get("NETPULSE_INFERENCE_POLL_SECONDS", "5")),
             threshold=float(os.environ.get("NETPULSE_ANOMALY_THRESHOLD", "0.1")),
             query=os.environ.get("NETPULSE_INFERENCE_QUERY", DEFAULT_QUERY),
+            max_sample_age_seconds=float(
+                os.environ.get("NETPULSE_INFERENCE_MAX_SAMPLE_AGE_SECONDS", "15")
+            ),
         )
 
 
@@ -148,7 +222,11 @@ class InferenceWorker:
     ) -> None:
         self.config = config
         self.collector = collector or (
-            lambda: collect_prometheus_vector(config.prometheus_url, config.query)
+            lambda: collect_prometheus_vector(
+                config.prometheus_url,
+                config.query,
+                max_sample_age_seconds=config.max_sample_age_seconds,
+            )
         )
         self.configure_threshold = configure_threshold or (
             lambda threshold: configure_detector_threshold(
@@ -204,6 +282,7 @@ class InferenceWorker:
                     sample.timestamp,
                     prediction.expected_timestamp,
                     abs_tol=self.config.poll_seconds * 0.01,
+                    rel_tol=0.0,
                 ):
                     score = abs(sample.value - prediction.value)
                     detections.append(
