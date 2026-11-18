@@ -20,3 +20,11 @@ It is not an MTTR claim or a production performance result.
 `evaluate/mttr.py` uses the documented restoration criterion: end-to-end throughput must remain
 at or above 90% of the pre-fault median for three consecutive samples. It emits no MTTR claim when
 that sustained window is absent.
+
+## Published closed-loop acceptance summary
+
+[`closed-loop-live-20261118.md`](closed-loop-live-20261118.md) summarizes a successful local
+closed-loop acceptance run: bounded impairment, detector and alert observation, guarded OSPF
+remediation, sustained traffic restoration, and cleanup. The source run remains ignored locally;
+the summary includes its run ID and manifest fingerprint but no raw telemetry, audit payloads, or
+local configuration. Its measured restoration time applies only to that synthetic scenario.
