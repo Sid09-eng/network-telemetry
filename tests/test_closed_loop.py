@@ -129,6 +129,7 @@ class ClosedLoopTrialTests(unittest.TestCase):
         now = [0.0]
         audit_calls = [0]
         route_calls = [0]
+        qdisc_deletes = [0]
         commands: list[list[str]] = []
         receiver = {
             "start": {"timestamp": {"timesecs": 0}},
@@ -149,6 +150,22 @@ class ClosedLoopTrialTests(unittest.TestCase):
             import subprocess
 
             commands.append(command)
+            if command[:6] == [
+                "docker",
+                "exec",
+                "clab-netpulse-r1",
+                "tc",
+                "qdisc",
+                "del",
+            ]:
+                qdisc_deletes[0] += 1
+                if qdisc_deletes[0] > 1:
+                    return subprocess.CompletedProcess(
+                        command,
+                        2,
+                        stdout="",
+                        stderr="Error: Invalid qdisc name: must match existing qdisc.",
+                    )
             stdout = ""
             if command[:4] == ["docker", "compose", "exec", "-T"]:
                 audit_calls[0] += 1

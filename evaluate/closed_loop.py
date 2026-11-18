@@ -379,7 +379,12 @@ def run_closed_loop_trial(
                 )
                 output = (completed.stdout + completed.stderr).strip()
                 already_removed = cleanup == commands["cleanup"][0] and any(
-                    marker in output for marker in ("No such file", "Cannot find")
+                    marker in output
+                    for marker in (
+                        "No such file",
+                        "Cannot find",
+                        "Invalid qdisc name",
+                    )
                 )
                 if completed.returncode and not already_removed:
                     errors.append(output or f"cleanup returned {completed.returncode}")
