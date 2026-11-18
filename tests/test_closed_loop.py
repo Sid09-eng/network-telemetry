@@ -10,6 +10,7 @@ from unittest.mock import patch
 from evaluate.closed_loop import (
     ClosedLoopConfig,
     require_live_mode,
+    require_trial_detection_profile,
     run_closed_loop_trial,
     trial_commands,
 )
@@ -49,6 +50,27 @@ class ClosedLoopTrialTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "post_action"):
             ClosedLoopConfig(run_id="closed-loop-001", post_action_seconds=0)
 
+    def test_requires_the_reviewed_detector_threshold_before_fault_injection(self) -> None:
+        config = ClosedLoopConfig(run_id="closed-loop-profile")
+        with self.assertRaisesRegex(ValueError, "threshold"):
+            require_trial_detection_profile(
+                'netpulse_anomaly_threshold{link="r1-r2"} 0.1\n', config
+            )
+        require_trial_detection_profile(
+            'netpulse_anomaly_threshold{link="r1-r2"} 0.01\n', config
+        )
+
+    def test_rejects_existing_run_before_contacting_live_services(self) -> None:
+        with TemporaryDirectory() as directory:
+            runs_root = Path(directory)
+            (runs_root / "already-used").mkdir()
+            with self.assertRaisesRegex(ValueError, "run_id"):
+                run_closed_loop_trial(
+                    config=ClosedLoopConfig(run_id="already-used"),
+                    runs_root=runs_root,
+                    runner=lambda *_args, **_kwargs: self.fail("no command should run"),
+                )
+
     def test_publishes_evidence_only_after_detection_action_rollback_and_restoration(self) -> None:
         now = [0.0]
         audit_calls = [0]
@@ -57,7 +79,7 @@ class ClosedLoopTrialTests(unittest.TestCase):
             "start": {"timestamp": {"timesecs": 0}},
             "intervals": [
                 {"sum": {"end": end, "bits_per_second": 25_000_000.0}}
-                for end in (0.5, 1.5, 2.5, 3.5, 4.5)
+                for end in range(1, 31)
             ],
         }
 
@@ -75,14 +97,16 @@ class ClosedLoopTrialTests(unittest.TestCase):
             stdout = ""
             if command[:4] == ["docker", "compose", "exec", "-T"]:
                 audit_calls[0] += 1
-                records = [
-                    {
-                        "status": "applied",
-                        "timestamp": "2026-11-18T00:00:00+00:00",
-                        "target": {"link": "r1-r2"},
-                    }
-                ]
+                records = []
                 if audit_calls[0] > 1:
+                    records.append(
+                        {
+                            "status": "applied",
+                            "timestamp": "2026-11-18T00:00:00+00:00",
+                            "target": {"link": "r1-r2"},
+                        }
+                    )
+                if audit_calls[0] > 2:
                     records.append(
                         {
                             "status": "rolled-back",
@@ -96,7 +120,7 @@ class ClosedLoopTrialTests(unittest.TestCase):
             elif command[:4] == ["docker", "exec", "clab-netpulse-h2", "cat"]:
                 stdout = json.dumps(receiver)
             elif command[-1:] == ["show ip route 10.0.4.0/24 json"]:
-                stdout = "{}"
+                stdout = '{"10.0.4.0/24":[{"nexthops":[{"interfaceName":"eth2"}]}]}'
             return subprocess.CompletedProcess(command, 0, stdout=stdout, stderr="")
 
         health = {"status": "ok", "mode": "live"}
@@ -113,9 +137,14 @@ class ClosedLoopTrialTests(unittest.TestCase):
         detector_metrics = (
             'netpulse_anomaly_active{link="r1-r2"} 1\n'
             'netpulse_anomaly_residual{link="r1-r2"} -0.2\n'
+            'netpulse_anomaly_threshold{link="r1-r2"} 0.01\n'
         )
         config = ClosedLoopConfig(
-            run_id="closed-loop-contract", baseline_seconds=2, post_action_seconds=1
+            run_id="closed-loop-contract",
+            baseline_seconds=2,
+            detection_timeout_seconds=1,
+            rollback_timeout_seconds=1,
+            post_action_seconds=1,
         )
 
         with (

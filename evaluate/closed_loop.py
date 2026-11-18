@@ -33,11 +33,13 @@ class ClosedLoopConfig:
     run_id: str
     baseline_seconds: int = 75
     detection_timeout_seconds: int = 120
-    rollback_timeout_seconds: int = 120
+    rollback_timeout_seconds: int = 360
     post_action_seconds: int = 15
     traffic_rate_mbps: int = 25
     impairment_rate: str = "1mbit"
     poll_seconds: float = 2.0
+    command_timeout_seconds: float = 20.0
+    detection_threshold_max: float = 0.01
     prometheus_url: str = "http://127.0.0.1:9090"
     detector_url: str = "http://127.0.0.1:8001"
     remediation_url: str = "http://127.0.0.1:8000"
@@ -65,16 +67,19 @@ class ClosedLoopConfig:
             raise ValueError("poll_seconds must be finite, positive, and numeric")
         if not NETEM_RATE_PATTERN.fullmatch(self.impairment_rate):
             raise ValueError("impairment_rate must be a positive tc rate")
+        for name in ("command_timeout_seconds", "detection_threshold_max"):
+            value = getattr(self, name)
+            if not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+                raise ValueError(f"{name} must be finite, positive, and numeric")
 
     @property
     def duration_seconds(self) -> int:
-        """Keep the iperf flow alive through bounded detection and rollback windows."""
+        """Keep the iperf flow alive through detection and post-action recovery evidence."""
         return (
             self.baseline_seconds
             + self.detection_timeout_seconds
-            + self.rollback_timeout_seconds
             + self.post_action_seconds
-            + 10
+            + 20
         )
 
 
@@ -219,15 +224,18 @@ def _alert_firing(payload: Mapping[str, Any]) -> bool:
     )
 
 
-def _audit_records(runner: CommandRunner) -> tuple[str, list[dict[str, Any]]]:
+def _audit_records(
+    runner: CommandRunner, *, timeout_seconds: float
+) -> tuple[str, list[dict[str, Any]]]:
     try:
         completed = runner(
             ["docker", "compose", "exec", "-T", "remediation", "cat", "/data/audit.jsonl"],
             check=True,
             capture_output=True,
             text=True,
+            timeout=timeout_seconds,
         )
-    except subprocess.CalledProcessError:
+    except (OSError, subprocess.SubprocessError):
         return "", []
     text = completed.stdout
     return text, [json.loads(line) for line in text.splitlines() if line.strip()]
@@ -255,9 +263,44 @@ def _alert_snapshot(config: ClosedLoopConfig) -> dict[str, Any] | None:
     return alerts if _alert_firing(alerts) else None
 
 
-def _audit_snapshot(runner: CommandRunner, status: str) -> tuple[str, list[dict[str, Any]]] | None:
-    snapshot = _audit_records(runner)
-    return snapshot if _matching_audit(snapshot[1], status) else None
+def _audit_snapshot(
+    runner: CommandRunner,
+    status: str,
+    *,
+    boundary: int,
+    timeout_seconds: float,
+) -> tuple[str, list[dict[str, Any]]] | None:
+    snapshot = _audit_records(runner, timeout_seconds=timeout_seconds)
+    return snapshot if _matching_audit(snapshot[1][boundary:], status) else None
+
+
+def _detector_threshold(metrics: str) -> float | None:
+    match = re.search(
+        rf'netpulse_anomaly_threshold\{{link="{LINK}"\}} ([0-9.eE+-]+)$', metrics, re.M
+    )
+    return float(match.group(1)) if match else None
+
+
+def require_trial_detection_profile(metrics: str, config: ClosedLoopConfig) -> None:
+    """Require a threshold sensitive enough for the rate-limited trial profile."""
+    threshold = _detector_threshold(metrics)
+    if threshold is None or threshold > config.detection_threshold_max:
+        raise ValueError(
+            "closed-loop trial requires a detector threshold at or below "
+            f"{config.detection_threshold_max:g}; restart monitoring with the reviewed "
+            "trial profile"
+        )
+
+
+def _route_uses_alternate_path(payload: object) -> bool:
+    """Accept FRR JSON only when the r1-r3 interface appears in a selected route."""
+    if isinstance(payload, Mapping):
+        if payload.get("interfaceName") == ALTERNATE_INTERFACE:
+            return True
+        return any(_route_uses_alternate_path(value) for value in payload.values())
+    if isinstance(payload, list):
+        return any(_route_uses_alternate_path(value) for value in payload)
+    return False
 
 
 def run_closed_loop_trial(
@@ -274,14 +317,48 @@ def run_closed_loop_trial(
     environment flags.  This function refuses dry-run mode before it changes routing or qdisc
     state and removes both temporary states even if evidence collection fails.
     """
+    if (runs_root / config.run_id).exists():
+        raise ValueError("run_id must be new and path-safe")
     require_live_mode(_get_json(f"{config.remediation_url}/healthz"))
+    require_trial_detection_profile(_get_text(f"{config.detector_url}/metrics"), config)
     commands = trial_commands(config)
     events: dict[str, Any] = {"run_started": clock(), "link": LINK, "mode": "live"}
     raw: dict[str, str] = {}
+    _, initial_audit_records = _audit_records(
+        runner, timeout_seconds=config.command_timeout_seconds
+    )
+    audit_boundary = len(initial_audit_records)
 
     def command(args: list[str], *, output: bool = False) -> str:
-        completed = runner(args, check=True, capture_output=output, text=output)
+        completed = runner(
+            args,
+            check=True,
+            capture_output=output,
+            text=output,
+            timeout=config.command_timeout_seconds,
+        )
         return completed.stdout if output else ""
+
+    def cleanup_temporary_state() -> list[str]:
+        errors: list[str] = []
+        for cleanup in commands["cleanup"]:  # type: ignore[union-attr]
+            try:
+                completed = runner(
+                    cleanup,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=config.command_timeout_seconds,
+                )
+                output = (completed.stdout + completed.stderr).strip()
+                already_removed = cleanup == commands["cleanup"][0] and any(
+                    marker in output for marker in ("No such file", "Cannot find")
+                )
+                if completed.returncode and not already_removed:
+                    errors.append(output or f"cleanup returned {completed.returncode}")
+            except (OSError, subprocess.SubprocessError) as error:
+                errors.append(str(error))
+        return errors
 
     try:
         command(commands["route_bias"])  # type: ignore[arg-type]
@@ -340,36 +417,76 @@ def run_closed_loop_trial(
         events["alert_firing"] = clock()
 
         audit_text, applied = _wait_for(
-            lambda: _audit_snapshot(runner, "applied"),
+            lambda: _audit_snapshot(
+                runner,
+                "applied",
+                boundary=audit_boundary,
+                timeout_seconds=config.command_timeout_seconds,
+            ),
             timeout_seconds=config.detection_timeout_seconds,
             interval_seconds=config.poll_seconds,
             clock=clock,
             sleeper=sleeper,
         )
         raw["raw/remediation-audit-after-action.jsonl"] = audit_text
-        events["action_applied"] = _matching_audit(applied, "applied")["timestamp"]
+        events["action_applied"] = _matching_audit(applied[audit_boundary:], "applied")[
+            "timestamp"
+        ]
         events["action_observed_at"] = clock()
-        events["impairment_removed"] = clock()
-        command(commands["clear_impairment"])  # type: ignore[arg-type]
-        sleeper(config.post_action_seconds)
 
-        audit_text, rolled_back = _wait_for(
-            lambda: _audit_snapshot(runner, "rolled-back"),
-            timeout_seconds=config.rollback_timeout_seconds,
+        def alternate_route() -> str | None:
+            route = command(
+                [
+                    "docker",
+                    "exec",
+                    "clab-netpulse-r1",
+                    "vtysh",
+                    "-c",
+                    "show ip route 10.0.4.0/24 json",
+                ],
+                output=True,
+            )
+            return route if _route_uses_alternate_path(json.loads(route)) else None
+
+        raw["raw/r1-route-after-action.json"] = _wait_for(
+            alternate_route,
+            timeout_seconds=config.post_action_seconds,
             interval_seconds=config.poll_seconds,
             clock=clock,
             sleeper=sleeper,
         )
-        raw["raw/remediation-audit-after-rollback.jsonl"] = audit_text
-        events["action_rolled_back"] = _matching_audit(rolled_back, "rolled-back")["timestamp"]
+        events["alternate_path_observed"] = clock()
 
-        remaining = max(0.0, events["run_started"] + config.duration_seconds - clock())
-        sleeper(remaining)
-        raw_iperf = json.loads(
-            command(
-                ["docker", "exec", "clab-netpulse-h2", "cat", f"/tmp/{config.run_id}-server.json"],
-                output=True,
-            )
+        def complete_receiver() -> dict[str, Any] | None:
+            try:
+                receiver = json.loads(
+                    command(
+                        [
+                            "docker",
+                            "exec",
+                            "clab-netpulse-h2",
+                            "cat",
+                            f"/tmp/{config.run_id}-server.json",
+                        ],
+                        output=True,
+                    )
+                )
+                samples = iperf_receiver_samples(receiver)
+            except (ValueError, json.JSONDecodeError, subprocess.SubprocessError):
+                return None
+            required_end = float(events["run_started"]) + config.duration_seconds - 2
+            return receiver if samples and samples[-1].timestamp >= required_end else None
+
+        raw_iperf = _wait_for(
+            complete_receiver,
+            timeout_seconds=max(
+                config.command_timeout_seconds,
+                float(events["run_started"]) + config.duration_seconds - clock()
+                + config.command_timeout_seconds,
+            ),
+            interval_seconds=config.poll_seconds,
+            clock=clock,
+            sleeper=sleeper,
         )
         events["run_finished"] = clock()
         recovery = evaluate_recovery(
@@ -381,10 +498,30 @@ def run_closed_loop_trial(
         events["mttr_seconds"] = recovery.mttr_seconds
         events["restoration_reason"] = recovery.reason
         raw["raw/recovery.json"] = json.dumps(asdict(recovery), indent=2, sort_keys=True)
-        raw["raw/r1-route.json"] = command(
-            ["docker", "exec", "clab-netpulse-r1", "vtysh", "-c", "show ip route 10.0.4.0/24 json"],
-            output=True,
+        if recovery.mttr_seconds is None:
+            raise ValueError("receiver throughput did not meet the sustained restoration criterion")
+
+        events["impairment_removed"] = clock()
+        command(commands["clear_impairment"])  # type: ignore[arg-type]
+        audit_text, rolled_back = _wait_for(
+            lambda: _audit_snapshot(
+                runner,
+                "rolled-back",
+                boundary=audit_boundary,
+                timeout_seconds=config.command_timeout_seconds,
+            ),
+            timeout_seconds=config.rollback_timeout_seconds,
+            interval_seconds=config.poll_seconds,
+            clock=clock,
+            sleeper=sleeper,
         )
+        raw["raw/remediation-audit-after-rollback.jsonl"] = audit_text
+        events["action_rolled_back"] = _matching_audit(
+            rolled_back[audit_boundary:], "rolled-back"
+        )["timestamp"]
+        cleanup_errors = cleanup_temporary_state()
+        if cleanup_errors:
+            raise RuntimeError("closed-loop cleanup incomplete: " + "; ".join(cleanup_errors))
         manifest = write_trial_evidence(
             runs_root=runs_root,
             run_id=config.run_id,
@@ -399,15 +536,11 @@ def run_closed_loop_trial(
             ],
             extra_artifacts=raw,
         )
-        if recovery.mttr_seconds is None:
-            raise ValueError("receiver throughput did not meet the sustained restoration criterion")
         return manifest
     finally:
-        for cleanup in commands["cleanup"]:  # type: ignore[union-attr]
-            try:
-                command(cleanup)
-            except subprocess.SubprocessError:
-                pass
+        cleanup_errors = cleanup_temporary_state()
+        if cleanup_errors:
+            raise RuntimeError("closed-loop cleanup incomplete: " + "; ".join(cleanup_errors))
 
 
 def main() -> int:

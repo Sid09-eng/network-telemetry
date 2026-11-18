@@ -261,8 +261,9 @@ applied.
 
 This is the only workflow that changes temporary routing and qdisc state. It needs the explicit
 live remediation profile and a new run ID; cleanup removes the qdisc and both temporary route
-costs even after a failed check. It fails rather than claiming success if detector, alert,
-applied-action, rollback, and receiver-throughput evidence are missing.
+costs even after a failed check. The runner rejects reused run IDs, an unsafe detector threshold,
+stale audit records, incomplete cleanup, and missing detector, alert, applied-action, rollback,
+alternate-route, or receiver-throughput evidence.
 Restoration uses the repository's declared criterion: three consecutive receiver samples at or
 above 90% of the pre-fault throughput median.
 
@@ -270,9 +271,15 @@ above 90% of the pre-fault throughput median.
 # In ignored .env, set both flags before the explicit live profile.
 # NETPULSE_DRY_RUN=false
 # NETPULSE_ENABLE_LIVE_ACTIONS=true
+# NETPULSE_ANOMALY_THRESHOLD=0.01
 make monitoring-live-up
 make closed-loop-trial RUN_ID=closed-loop-20261118-001
 ```
+
+The normal `0.1` threshold is intentionally too high for this 25 Mb/s-to-1 Mb/s rate trial
+(the expected one-minute utilization residual is approximately `-0.02`). The runner requires
+`0.01` or lower before it applies the impairment. `make monitoring-live-up` recreates the
+detector with the ignored `.env` profile.
 
 Successful output is immutable under `runs/<RUN_ID>/`: receiver output, detector metrics,
 Prometheus alerts, remediation audit snapshots, route output, event timestamps, and hashes of
@@ -309,7 +316,7 @@ values—and follows this flow:
 | Monitoring | Local Prometheus, Grafana, and remediation health endpoints provide the stack checks. |
 | Live snapshot | [17 November 2026 summary](results/live-demo-20261117.md) and [JSON](results/live-demo-20261117.json) capture one controlled run, including the dry-run boundary. |
 | Experiments | Immutable run manifests and [MTTR results](results/mttr_metrics.md) hold the reproducible synthetic experiment record. |
-| Verification | **84 automated tests** run through `make test`; Ruff, Compose, Terraform, and Gitleaks run in [GitHub Actions](.github/workflows/ci.yml). |
+| Verification | **88 automated tests** run through `make test`; Ruff, Compose, Terraform, and Gitleaks run in [GitHub Actions](.github/workflows/ci.yml). |
 | Deployment | [GCP deployment reference](docs/gcp-deployment.md) covers the loopback-only VM profile without committing cloud identifiers. |
 | Demo | [docs/demo.gif](docs/demo.gif) is captured from a running local stack. |
 

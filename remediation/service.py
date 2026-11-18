@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import threading
 import time
@@ -72,6 +73,31 @@ class RemediationService:
         self.monotonic_clock = monotonic_clock
         self._lock = threading.Lock()
         self._metrics = RemediationMetrics()
+        self._restore_applied_targets()
+
+    def _restore_applied_targets(self) -> None:
+        """Recover live costs that were durably applied before a service restart."""
+        if self.adapter.dry_run or not self.audit_path.is_file():
+            return
+        for line in self.audit_path.read_text(encoding="utf-8").splitlines():
+            try:
+                record = json.loads(line)
+                target_data = record["target"]
+                target = RemediationTarget(
+                    link=str(target_data["link"]),
+                    router=str(target_data["router"]),
+                    interface=str(target_data["interface"]),
+                    fingerprint=str(target_data["fingerprint"]),
+                )
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            key = (target.router, target.interface)
+            if record.get("mode") != "live":
+                continue
+            if record.get("status") == "applied":
+                self._applied_targets[key] = target
+            elif record.get("status") == "rolled-back":
+                self._applied_targets.pop(key, None)
 
     @property
     def mode(self) -> str:
@@ -156,7 +182,8 @@ class RemediationService:
 
     def _resolve_target(self, target: RemediationTarget) -> dict[str, Any]:
         """Rollback only the cost previously applied for this resolved alert."""
-        applied = self._applied_targets.pop((target.router, target.interface), None)
+        key = (target.router, target.interface)
+        applied = self._applied_targets.get(key)
         if applied is None:
             decision = self._decision(target, status="resolved", latency_seconds=0.0)
             append_audit(self.audit_path, decision)
@@ -179,6 +206,8 @@ class RemediationService:
             status=result.status,
             latency_seconds=result.latency_seconds,
         )
+        if result.status == "rolled-back":
+            self._applied_targets.pop(key, None)
         return decision
 
     def _decision(
