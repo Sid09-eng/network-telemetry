@@ -2,13 +2,20 @@ global:
   resolve_timeout: 5m
 
 route:
-  receiver: remediation
+  # Detection remains observable for every link.  Only the canonical,
+  # explicitly exercised r1-r2 path is authorized to reach remediation.
+  receiver: discard
   group_by: [alertname, router, interface, link]
   group_wait: 10s
   group_interval: 5m
   repeat_interval: 4h
+  routes:
+    - receiver: remediation
+      matchers:
+        - link="r1-r2"
 
 receivers:
+  - name: discard
   - name: remediation
     webhook_configs:
       - url: http://remediation:8000/alerts
