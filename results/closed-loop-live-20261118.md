@@ -24,6 +24,13 @@ acceptance check returned the diamond to normal ECMP state.
 The restoration time is specific to this controlled impairment, traffic profile, thresholds, and
 local runtime. It should not be interpreted as a general MTTR or a production service objective.
 
+## Event timeline
+
+![Timeline from impairment to sustained restoration](../docs/closed-loop-timeline.svg)
+
+The alert and restoration markers are intentionally close together: the declared sustained
+restoration condition was first met 0.26 seconds after the firing alert in this run.
+
 ## Provenance
 
 The complete evidence set remains local at

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="330" viewBox="0 0 960 330" role="img" aria-labelledby="title desc">
+  <title id="title">NetPulse closed-loop acceptance timeline</title>
+  <desc id="desc">A controlled 1 megabit-per-second impairment was applied at zero seconds. The detector became active at 36.14 seconds, the Prometheus alert fired at 56.18 seconds, and sustained traffic restoration was observed at 56.43 seconds.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; } .title { fill: #0f172a; font: 700 27px sans-serif; }
+      .subtitle { fill: #475569; font: 15px sans-serif; } .axis { stroke: #94a3b8; stroke-width: 4; }
+      .tick { stroke: #94a3b8; stroke-width: 2; } .tick-label { fill: #64748b; font: 13px sans-serif; text-anchor: middle; }
+      .event-label { fill: #0f172a; font: 700 15px sans-serif; } .event-time { fill: #475569; font: 14px sans-serif; }
+      .fault { fill: #dc2626; } .detect { fill: #2563eb; } .alert { fill: #d97706; } .restore { fill: #16a34a; }
+      .guide { stroke: #cbd5e1; stroke-width: 2; stroke-dasharray: 5 5; }
+      .note { fill: #334155; font: 14px sans-serif; }
+    </style>
+  </defs>
+  <rect class="bg" width="960" height="330" rx="16"/>
+  <text class="title" x="48" y="52">Closed-loop acceptance timeline</text>
+  <text class="subtitle" x="48" y="78">Synthetic Containerlab run · 18 November 2026 · restoration requires three receiver samples at or above 90% of baseline</text>
+
+  <line class="axis" x1="100" y1="190" x2="860" y2="190"/>
+  <g>
+    <line class="tick" x1="100" y1="180" x2="100" y2="200"/><text class="tick-label" x="100" y="223">0 s</text>
+    <line class="tick" x1="353" y1="180" x2="353" y2="200"/><text class="tick-label" x="353" y="223">20 s</text>
+    <line class="tick" x1="607" y1="180" x2="607" y2="200"/><text class="tick-label" x="607" y="223">40 s</text>
+    <line class="tick" x1="860" y1="180" x2="860" y2="200"/><text class="tick-label" x="860" y="223">60 s</text>
+  </g>
+
+  <line class="guide" x1="100" y1="124" x2="100" y2="190"/>
+  <circle class="fault" cx="100" cy="190" r="10"/>
+  <text class="event-label" x="48" y="111">Impairment applied</text>
+  <text class="event-time" x="48" y="133">t+0.00 s</text>
+
+  <line class="guide" x1="558" y1="190" x2="558" y2="140"/>
+  <circle class="detect" cx="558" cy="190" r="10"/>
+  <text class="event-label" x="488" y="111">Detector active</text>
+  <text class="event-time" x="488" y="133">t+36.14 s</text>
+
+  <line class="guide" x1="812" y1="190" x2="812" y2="246"/>
+  <circle class="alert" cx="812" cy="190" r="10"/>
+  <text class="event-label" x="670" y="266">Alert firing</text>
+  <text class="event-time" x="670" y="287">t+56.18 s</text>
+
+  <line class="guide" x1="815" y1="190" x2="815" y2="140"/>
+  <circle class="restore" cx="815" cy="190" r="7" stroke="#f8fafc" stroke-width="3"/>
+  <text class="event-label" x="746" y="111">Traffic restored</text>
+  <text class="event-time" x="746" y="133">t+56.43 s</text>
+</svg>
