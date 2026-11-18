@@ -27,4 +27,6 @@ that sustained window is absent.
 closed-loop acceptance run: bounded impairment, detector and alert observation, guarded OSPF
 remediation, sustained traffic restoration, and cleanup. The source run remains ignored locally;
 the summary includes its run ID and manifest fingerprint but no raw telemetry, audit payloads, or
-local configuration. Its measured restoration time applies only to that synthetic scenario.
+local configuration. A compact [event timeline](../docs/closed-loop-timeline.svg) makes the
+sanitized timing easy to inspect. Its measured restoration time applies only to that synthetic
+scenario.
