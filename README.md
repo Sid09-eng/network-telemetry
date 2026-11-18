@@ -271,16 +271,16 @@ above 90% of the pre-fault throughput median.
 # In ignored .env, set both flags before the explicit live profile.
 # NETPULSE_DRY_RUN=false
 # NETPULSE_ENABLE_LIVE_ACTIONS=true
-# NETPULSE_ANOMALY_THRESHOLD=0.05
+# NETPULSE_ANOMALY_THRESHOLD=0.01
 make monitoring-live-up
 make closed-loop-trial RUN_ID=closed-loop-20261118-001
 ```
 
 The normal `0.1` threshold is intentionally too high for this 25 Mb/s-to-1 Mb/s rate trial.
-The reference topology has a small baseline forecaster warm-up movement (about `0.023`), while
-the rate impairment has a substantially larger negative residual. The runner therefore permits
-`0.05` or lower before it applies the impairment. `make monitoring-live-up` recreates the
-detector with the ignored `.env` profile.
+The runner requires `0.01` or lower before it applies the impairment. Its 30-second baseline
+ends before the forecaster's observed warm-up reversal; if remediation nevertheless acts before
+the fault, the audit gate rejects the run without changing the qdisc. `make monitoring-live-up`
+recreates the detector with the ignored `.env` profile.
 
 Successful output is immutable under `runs/<RUN_ID>/`: receiver output, detector metrics,
 Prometheus alerts, remediation audit snapshots, route output, event timestamps, and hashes of
