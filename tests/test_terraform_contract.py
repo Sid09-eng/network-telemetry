@@ -35,6 +35,23 @@ class TerraformContractTests(unittest.TestCase):
         self.assertIn('output "grafana_tunnel_command"', outputs)
         self.assertNotIn('output "grafana_url"', outputs)
 
+    def test_vm_alerts_are_scoped_to_the_terraform_managed_instance(self) -> None:
+        configuration = (TERRAFORM / "main.tf").read_text(encoding="utf-8")
+        variables = (TERRAFORM / "variables.tf").read_text(encoding="utf-8")
+        example = (TERRAFORM / "terraform.tfvars.example").read_text(encoding="utf-8")
+        deployment = (ROOT / "docs" / "gcp-deployment.md").read_text(encoding="utf-8")
+
+        self.assertIn('resource "google_monitoring_alert_policy" "vm_unavailable"', configuration)
+        self.assertIn('resource "google_monitoring_alert_policy" "cpu_saturation"', configuration)
+        self.assertIn("condition_absent", configuration)
+        self.assertIn("condition_threshold", configuration)
+        self.assertIn("compute.googleapis.com/instance/cpu/utilization", configuration)
+        self.assertIn("google_compute_instance.netpulse.instance_id", configuration)
+        self.assertIn("google_monitoring_notification_channel", configuration)
+        self.assertIn("alert_notification_email", variables)
+        self.assertIn("alert_notification_email", example)
+        self.assertIn("Cloud Monitoring", deployment)
+
     def test_startup_and_operator_docs_cover_safe_deployment_and_teardown(self) -> None:
         startup = (TERRAFORM / "startup.sh").read_text(encoding="utf-8")
         deployment = (ROOT / "docs" / "gcp-deployment.md").read_text(encoding="utf-8")
