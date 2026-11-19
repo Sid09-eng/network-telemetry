@@ -77,6 +77,12 @@ class MonitoringStackContractTests(unittest.TestCase):
             "sum by (mode, status) (netpulse_remediation_actions_total)",
         )
 
+    def test_grafana_requires_an_explicit_admin_password(self) -> None:
+        compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+
+        self.assertIn("${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}", compose)
+        self.assertNotIn("netpulse-local-only", compose)
+
 
 if __name__ == "__main__":
     unittest.main()

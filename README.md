@@ -18,7 +18,7 @@ recorded runs; they are not claims about a production network.
 - Python 3.11 or 3.12 for project dependencies
 - Linux host or Linux VM for Containerlab execution
 - Docker with Compose v2
-- Terraform 1.9+ and a GCP project with an approved budget for optional deployment
+- Terraform 1.9+ and an approved GCP project/billing account for the required cloud deployment
 
 ## Foundation setup
 
@@ -30,10 +30,16 @@ python -m pip install -e ".[dev]"
 if [[ ! -f .env ]]; then
   cp .env.example .env
 fi
+if ! grep -Eq '^GRAFANA_ADMIN_PASSWORD=.+$' .env; then
+  echo "Set GRAFANA_ADMIN_PASSWORD in .env before continuing." >&2
+  exit 1
+fi
 make check
 ```
 
-`NETPULSE_DRY_RUN=true` is default. Do not put GCP credentials, Terraform variables, Grafana state, fault captures, or remediation audit logs in Git.
+`NETPULSE_DRY_RUN=true` is default. Set a unique `GRAFANA_ADMIN_PASSWORD` in the ignored `.env`
+before starting Compose. Do not put GCP credentials, Terraform variables, Grafana state, fault
+captures, or remediation audit logs in Git.
 
 ## Linux quick start
 
@@ -98,9 +104,9 @@ make teardown
 ```
 
 `make teardown` expands to `make monitoring-down` followed by `make topology-down`; it does not
-delete the repository, virtual environment, or GCP resources. If you deliberately provisioned the
-optional GCP VM and no longer need it, review the Terraform plan and then run this separate,
-destructive cloud cleanup command from the repository root:
+delete the repository, virtual environment, or GCP resources. After the required cloud deployment,
+review the Terraform plan before running this separate destructive cloud cleanup command from the
+repository root:
 
 ```bash
 terraform -chdir=infra/terraform destroy
@@ -322,7 +328,7 @@ values—and follows this flow:
 | Live snapshot | [17 November 2026 summary](results/live-demo-20261117.md) and [JSON](results/live-demo-20261117.json) capture one controlled run, including the dry-run boundary. |
 | Closed-loop acceptance | [18 November 2026 summary](results/closed-loop-live-20261118.md) and [event timeline](docs/closed-loop-timeline.svg) record a controlled impairment, guarded remediation, restoration, rollback, and the source manifest fingerprint. |
 | Experiments | Immutable run manifests and [MTTR results](results/mttr_metrics.md) hold the reproducible synthetic experiment record. |
-| Verification | **95 automated tests** run through `make test`; Ruff, Compose, Terraform, and Gitleaks run in [GitHub Actions](.github/workflows/ci.yml). |
+| Verification | **102 automated tests** run through `make test`; Ruff, Compose, Terraform, and Gitleaks run in [GitHub Actions](.github/workflows/ci.yml). |
 | Deployment | [GCP deployment reference](docs/gcp-deployment.md) covers the loopback-only VM profile without committing cloud identifiers. |
 | Demo | [docs/demo.gif](docs/demo.gif) is captured from a running local stack. |
 

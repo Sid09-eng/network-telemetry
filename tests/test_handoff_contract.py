@@ -30,9 +30,15 @@ class HandoffContractTests(unittest.TestCase):
             "## Limitations",
             "## Security boundary",
             "## Evidence and provenance",
-            "95 automated tests",
+            "102 automated tests",
         ):
             self.assertIn(required, readme)
+
+    def test_readme_treats_gcp_as_a_required_deployment_path_not_an_optional_claim(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn("required cloud deployment", readme)
+        self.assertNotIn("optional deployment", readme)
 
     def test_committed_architecture_and_demo_assets_are_present(self) -> None:
         architecture = ROOT / "docs" / "architecture.svg"
@@ -59,6 +65,27 @@ class HandoffContractTests(unittest.TestCase):
         self.assertIn("deadline=$((SECONDS + 60))", readme)
         self.assertIn("--connect-timeout 2", readme)
         self.assertIn("if (( remaining <= 0 )); then", readme)
+
+    def test_quickstart_preflights_curl_and_supported_python_before_mutating(self) -> None:
+        quickstart = (ROOT / "scripts" / "linux_quickstart.sh").read_text(encoding="utf-8")
+
+        self.assertIn("python3 docker containerlab make curl", quickstart)
+        self.assertIn('python3 -c \'import sys; raise SystemExit(', quickstart)
+        self.assertLess(
+            quickstart.index("python3 -c"),
+            quickstart.index("python3 -m venv .venv"),
+        )
+
+    def test_quickstart_requires_a_nonempty_grafana_password_before_deployment(self) -> None:
+        quickstart = (ROOT / "scripts" / "linux_quickstart.sh").read_text(encoding="utf-8")
+        environment_example = (ROOT / ".env.example").read_text(encoding="utf-8")
+
+        self.assertIn("GRAFANA_ADMIN_PASSWORD", quickstart)
+        self.assertIn("Set a unique GRAFANA_ADMIN_PASSWORD", quickstart)
+        self.assertIn("GRAFANA_ADMIN_PASSWORD=", environment_example)
+        self.assertNotIn(
+            "GRAFANA_ADMIN_PASSWORD=replace-with-a-local-password", environment_example
+        )
 
     def test_capture_reports_a_validated_remediation_mode(self) -> None:
         specification = importlib.util.spec_from_file_location(
@@ -108,6 +135,14 @@ class HandoffContractTests(unittest.TestCase):
         self.assertEqual(published_manifest["fault_ground_truth"], None)
         digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
         self.assertIn(f"Source manifest SHA-256: `{digest}`", report)
+
+    def test_anomaly_report_names_its_single_fault_evidence_and_limit(self) -> None:
+        report = (ROOT / "results" / "anomaly_metrics.md").read_text(encoding="utf-8")
+
+        self.assertIn("closed-loop-20261118-live-008", report)
+        self.assertIn("36.14 s", report)
+        self.assertIn("1.000 (1/1)", report)
+        self.assertIn("Precision is not reported", report)
 
 
 if __name__ == "__main__":
