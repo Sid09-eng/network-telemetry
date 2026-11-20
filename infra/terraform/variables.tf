@@ -3,6 +3,48 @@ variable "project_id" {
   type        = string
 }
 
+variable "project_number" {
+  description = "Numeric GCP project number used by the billing-budget filter."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.project_number))
+    error_message = "project_number must contain digits only."
+  }
+}
+
+variable "billing_account_id" {
+  description = "Billing account ID that owns the project and receives the NetPulse budget."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[A-Z0-9]{6}-[A-Z0-9]{6}-[A-Z0-9]{6}$", var.billing_account_id))
+    error_message = "billing_account_id must use the XXXXXX-XXXXXX-XXXXXX format."
+  }
+}
+
+variable "budget_amount" {
+  description = "Monthly NetPulse budget amount in the billing account's currency; this alerts but cannot stop spend."
+  type        = number
+  default     = 20
+
+  validation {
+    condition     = var.budget_amount > 0 && floor(var.budget_amount) == var.budget_amount
+    error_message = "budget_amount must be a positive whole number."
+  }
+}
+
+variable "budget_currency_code" {
+  description = "Three-letter ISO currency code matching the attached billing account."
+  type        = string
+  default     = "USD"
+
+  validation {
+    condition     = can(regex("^[A-Z]{3}$", var.budget_currency_code))
+    error_message = "budget_currency_code must be a three-letter uppercase ISO currency code."
+  }
+}
+
 variable "region" {
   description = "GCP region that contains the NetPulse VM."
   type        = string

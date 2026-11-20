@@ -1,7 +1,9 @@
 provider "google" {
-  project = var.project_id
-  region  = var.region
-  zone    = var.zone
+  project               = var.project_id
+  billing_project       = var.project_id
+  user_project_override = true
+  region                = var.region
+  zone                  = var.zone
 }
 
 resource "google_compute_network" "netpulse" {
@@ -100,6 +102,49 @@ resource "google_monitoring_notification_channel" "operator" {
   labels = {
     email_address = var.alert_notification_email
   }
+}
+
+resource "google_project_service" "billing_budgets" {
+  project            = var.project_id
+  service            = "billingbudgets.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_billing_budget" "netpulse" {
+  billing_account = var.billing_account_id
+  display_name    = "NetPulse monthly budget"
+
+  budget_filter {
+    projects        = ["projects/${var.project_number}"]
+    calendar_period = "MONTH"
+  }
+
+  amount {
+    specified_amount {
+      currency_code = var.budget_currency_code
+      units         = tostring(var.budget_amount)
+    }
+  }
+
+  threshold_rules {
+    threshold_percent = 0.5
+  }
+
+  threshold_rules {
+    threshold_percent = 0.9
+  }
+
+  threshold_rules {
+    threshold_percent = 1.0
+    spend_basis       = "FORECASTED_SPEND"
+  }
+
+  all_updates_rule {
+    monitoring_notification_channels = local.alert_notification_channels
+    enable_project_level_recipients  = true
+  }
+
+  depends_on = [google_project_service.billing_budgets]
 }
 
 resource "google_monitoring_alert_policy" "vm_unavailable" {

@@ -19,7 +19,7 @@ class ContinuousIntegrationContractTests(unittest.TestCase):
             "push:",
             "actions/checkout@v7",
             "actions/setup-python@v7",
-            'python-version: "3.11"',
+            'python-version: ["3.11", "3.12"]',
             'python -m pip install -e ".[dev]"',
             "make lint",
             "make test",
@@ -46,6 +46,13 @@ class ContinuousIntegrationContractTests(unittest.TestCase):
         self.assertIn('package-ecosystem: "pip"', dependabot)
         self.assertNotIn('package-ecosystem: "docker"', dependabot)
         self.assertIn("interval: weekly", dependabot)
+
+    def test_python_quality_covers_every_supported_python_minor(self) -> None:
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("matrix:", workflow)
+        self.assertIn('python-version: ["3.11", "3.12"]', workflow)
+        self.assertIn("python-version: ${{ matrix.python-version }}", workflow)
 
 
 if __name__ == "__main__":

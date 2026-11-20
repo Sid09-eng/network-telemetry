@@ -52,6 +52,29 @@ class TerraformContractTests(unittest.TestCase):
         self.assertIn("alert_notification_email", example)
         self.assertIn("Cloud Monitoring", deployment)
 
+    def test_budget_alert_is_scoped_to_the_configured_project(self) -> None:
+        configuration = (TERRAFORM / "main.tf").read_text(encoding="utf-8")
+        variables = (TERRAFORM / "variables.tf").read_text(encoding="utf-8")
+        example = (TERRAFORM / "terraform.tfvars.example").read_text(encoding="utf-8")
+
+        self.assertIn('resource "google_billing_budget" "netpulse"', configuration)
+        self.assertIn('resource "google_project_service" "billing_budgets"', configuration)
+        self.assertIn("billingbudgets.googleapis.com", configuration)
+        self.assertIn("billing_project", configuration)
+        self.assertIn("user_project_override = true", configuration)
+        self.assertIn("billing_account = var.billing_account_id", configuration)
+        self.assertIn('projects        = ["projects/${var.project_number}"]', configuration)
+        self.assertIn("enable_project_level_recipients", configuration)
+        self.assertIn("google_project_service.billing_budgets", configuration)
+        self.assertIn("billing_account_id", variables)
+        self.assertIn("project_number", variables)
+        self.assertIn("budget_currency_code", variables)
+        self.assertIn("budget_amount", variables)
+        self.assertIn("floor(var.budget_amount)", variables)
+        self.assertIn("billing_account_id", example)
+        self.assertIn("project_number", example)
+        self.assertIn("budget_currency_code", example)
+
     def test_startup_and_operator_docs_cover_safe_deployment_and_teardown(self) -> None:
         startup = (TERRAFORM / "startup.sh").read_text(encoding="utf-8")
         deployment = (ROOT / "docs" / "gcp-deployment.md").read_text(encoding="utf-8")
@@ -66,6 +89,8 @@ class TerraformContractTests(unittest.TestCase):
         self.assertIn("budget", deployment.lower())
         self.assertIn("gcloud auth application-default login", deployment)
         self.assertIn("gcloud auth login", deployment)
+        self.assertIn("gcloud services enable cloudresourcemanager.googleapis.com", deployment)
+        self.assertIn("sudo git clone", deployment)
         self.assertIn("sudo make topology-up", deployment)
         self.assertIn("sudo make topology-check", deployment)
         self.assertIn("sudo make monitoring-up", deployment)

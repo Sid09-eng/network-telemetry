@@ -8,13 +8,27 @@ minutes.
 
 ## Configuration
 
-Create `infra/terraform/terraform.tfvars` from the example with the approved project ID, region,
-zone, and a `/32` administrator CIDR. Keep that file, Terraform state, plans, and credentials out
-of Git. Enable Compute Engine and set a project budget before applying; a budget sends alerts but
-does not stop resources automatically.
+Create `infra/terraform/terraform.tfvars` from the example with the approved project ID, numeric
+project number, billing account ID, region, zone, budget amount and currency, and a `/32` administrator
+CIDR. `budget_currency_code` must match the billing account currency (for example, `INR` for an INR
+account); it is not necessarily the VM region's currency. The project number is visible in the Google
+Cloud Console project details. Keep that file, Terraform
+state, plans, and credentials out of Git. Terraform creates a project-scoped monthly budget with
+50%, 90%, and forecasted-100% thresholds, and enables the Billing Budgets API before creating the
+budget. A budget sends alerts but does not stop resources automatically.
 
 Authenticate the local Terraform client with `gcloud auth login` and
 `gcloud auth application-default login` before planning. The VM itself uses no service account.
+Before the first Terraform apply in a project, enable the Google Cloud Resource Manager API. The
+Google provider needs it to manage the Billing Budgets API; Terraform then enables that API and
+creates the budget itself.
+
+```bash
+gcloud services enable cloudresourcemanager.googleapis.com --project YOUR_PROJECT_ID
+```
+
+Your account needs permission to enable project services and create budgets. This one-time bootstrap
+does not create a VM or alter the network.
 
 `alert_notification_email` is optional. When set, Terraform creates an email notification channel;
 the recipient must confirm Google's verification email before it receives policy notifications.
@@ -41,8 +55,11 @@ The startup script installs Docker, Containerlab 0.83.0, and base tooling in `/o
 Clone the repository to `/opt/netpulse/app` after the VM is available:
 
 ```bash
-git clone https://github.com/Sid09-eng/network-telemetry.git /opt/netpulse/app
+sudo git clone https://github.com/Sid09-eng/network-telemetry.git /opt/netpulse/app
 cd /opt/netpulse/app
+sudo cp .env.example .env
+sudoedit .env
+# Set GRAFANA_ADMIN_PASSWORD to a unique local value before continuing.
 sudo make topology-up
 sudo make topology-check
 sudo make monitoring-up
