@@ -30,3 +30,10 @@ the summary includes its run ID and manifest fingerprint but no raw telemetry, a
 local configuration. A compact [event timeline](../docs/closed-loop-timeline.svg) makes the
 sanitized timing easy to inspect. Its measured restoration time applies only to that synthetic
 scenario.
+
+## Published anomaly evaluation figure
+
+[`anomaly_metrics.md`](anomaly_metrics.md) reports the controlled single-fault detector result
+and includes an [evaluation figure](../docs/anomaly-evaluation.svg). It records the 36.14-second
+fault-to-detector delay and 1/1 matched-fault recall without inventing a precision value from an
+incomplete public observation window.

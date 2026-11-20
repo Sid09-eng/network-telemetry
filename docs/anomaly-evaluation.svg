@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title description">
+  <title id="title">NetPulse controlled anomaly evaluation</title>
+  <desc id="description">One controlled r1-r2 fault was detected after 36.14 seconds. The alert fired after 56.18 seconds and restoration was measured at 56.43 seconds. Recall was one match from one fault; precision is not reported because the public evidence has no complete scored observation window.</desc>
+  <style>
+    .bg { fill: #f8fafc; } .panel { fill: #ffffff; stroke: #dbe4ee; stroke-width: 2; }
+    .eyebrow { fill: #0f766e; font: 700 16px Arial, sans-serif; letter-spacing: 1.8px; }
+    .title { fill: #102a43; font: 700 34px Arial, sans-serif; } .subtitle { fill: #486581; font: 18px Arial, sans-serif; }
+    .panel-title { fill: #102a43; font: 700 21px Arial, sans-serif; } .label { fill: #486581; font: 600 15px Arial, sans-serif; }
+    .small { fill: #627d98; font: 14px Arial, sans-serif; } .metric { fill: #102a43; font: 700 30px Arial, sans-serif; }
+    .note { fill: #8a4b0f; font: 600 14px Arial, sans-serif; } .axis { stroke: #9fb3c8; stroke-width: 2; }
+    .grid { stroke: #d9e2ec; stroke-width: 1; stroke-dasharray: 4 5; } .fault { fill: #dc2626; }
+    .detect { fill: #0f766e; } .alert { fill: #d97706; } .restore { fill: #2563eb; }
+  </style>
+  <rect class="bg" width="1200" height="720"/>
+  <text x="64" y="58" class="eyebrow">NETPULSE · CONTROLLED LABORATORY EVIDENCE</text>
+  <text x="64" y="102" class="title">Controlled anomaly evaluation</text>
+  <text x="64" y="134" class="subtitle">Single synthetic lab fault · source run closed-loop-20261118-live-008</text>
+  <rect class="panel" x="64" y="174" width="1072" height="292" rx="14"/>
+  <text x="96" y="216" class="panel-title">Fault-to-response timeline</text>
+  <text x="96" y="244" class="small">Elapsed seconds from the applied r1-r2 rate impairment</text>
+  <line class="axis" x1="128" y1="352" x2="1064" y2="352"/>
+  <line class="grid" x1="128" y1="282" x2="128" y2="380"/><line class="grid" x1="440" y1="282" x2="440" y2="380"/>
+  <line class="grid" x1="752" y1="282" x2="752" y2="380"/><line class="grid" x1="1064" y1="282" x2="1064" y2="380"/>
+  <text x="119" y="407" class="small">0 s</text><text x="426" y="407" class="small">20 s</text><text x="738" y="407" class="small">40 s</text><text x="1048" y="407" class="small">60 s</text>
+  <circle class="fault" cx="128" cy="352" r="10"/><line x1="128" y1="342" x2="128" y2="286" stroke="#dc2626" stroke-width="3"/>
+  <text x="128" y="272" text-anchor="middle" class="label">Fault applied</text><text x="128" y="432" text-anchor="middle" class="small">0.00 s</text>
+  <circle class="detect" cx="692" cy="352" r="10"/><line x1="692" y1="342" x2="692" y2="300" stroke="#0f766e" stroke-width="3"/>
+  <text x="692" y="272" text-anchor="middle" class="label">Detector active</text><text x="692" y="432" text-anchor="middle" class="small">36.14 s</text>
+  <circle class="alert" cx="1004" cy="352" r="10"/><line x1="1004" y1="342" x2="1004" y2="300" stroke="#d97706" stroke-width="3"/>
+  <text x="1004" y="272" text-anchor="middle" class="label">Alert firing</text><text x="1004" y="432" text-anchor="middle" class="small">56.18 s</text>
+  <circle class="restore" cx="1008" cy="352" r="7"/><text x="1008" y="458" text-anchor="middle" class="small">Restored 56.43 s</text>
+  <rect class="panel" x="64" y="498" width="1072" height="154" rx="14"/>
+  <text x="96" y="538" class="panel-title">Evaluation coverage</text>
+  <text x="96" y="574" class="label">Applied faults</text><text x="96" y="610" class="metric">1</text><line x1="300" y1="550" x2="300" y2="622" stroke="#dbe4ee" stroke-width="2"/>
+  <text x="340" y="574" class="label">Matched detections</text><text x="340" y="610" class="metric">1</text><line x1="540" y1="550" x2="540" y2="622" stroke="#dbe4ee" stroke-width="2"/>
+  <text x="580" y="574" class="label">Single-fault recall</text><text x="580" y="610" class="metric">1 / 1</text><line x1="780" y1="550" x2="780" y2="622" stroke="#dbe4ee" stroke-width="2"/>
+  <text x="820" y="574" class="label">Precision</text><text x="820" y="607" class="note">Precision not reported</text><text x="820" y="628" class="small">No scored window</text>
+  <text x="64" y="690" class="small">One active detection may match one same-link fault. Threshold selected from validation residuals only.</text>
+</svg>

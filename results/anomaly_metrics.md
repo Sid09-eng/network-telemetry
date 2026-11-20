@@ -12,6 +12,11 @@ single-fault recall is **1.000 (1/1)**. The alert, live OSPF action, sustained r
 rollback are recorded separately in
 [the closed-loop acceptance summary](closed-loop-live-20261118.md).
 
+![Controlled anomaly evaluation: one matched fault, 36.14-second detection delay, and precision not reported](../docs/anomaly-evaluation.svg)
+
+The figure separates observed facts from missing evidence: it visualises the measured fault-to-response
+timeline and the one matched fault, while retaining the precision limitation.
+
 | Metric | Observed value |
 | --- | ---: |
 | Applied source-backed faults | 1 |
