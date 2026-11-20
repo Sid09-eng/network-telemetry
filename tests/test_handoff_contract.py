@@ -144,6 +144,17 @@ class HandoffContractTests(unittest.TestCase):
         self.assertIn("1.000 (1/1)", report)
         self.assertIn("Precision is not reported", report)
 
+    def test_anomaly_evaluation_figure_is_committed_and_preserves_evidence_limits(self) -> None:
+        figure = ROOT / "docs" / "anomaly-evaluation.svg"
+        report = (ROOT / "results" / "anomaly_metrics.md").read_text(encoding="utf-8")
+
+        self.assertTrue(figure.is_file())
+        figure_text = figure.read_text(encoding="utf-8")
+        self.assertIn("36.14 s", figure_text)
+        self.assertIn("1 / 1", figure_text)
+        self.assertIn("Precision not reported", figure_text)
+        self.assertIn("../docs/anomaly-evaluation.svg", report)
+
 
 if __name__ == "__main__":
     unittest.main()
